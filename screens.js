@@ -1,4 +1,5 @@
 // 니짐내짐 구독 «해지예약 회유» B안 — 화면 그리기. 시안(_src/build.py·admin.py) 마크업을 그대로 옮겼다(클래스·문구·숫자 동일).
+// v1.3(10-23): 시안 v3 «시크릿 제안» A안 — A2-1(+A2-2b)·A2-2 문안, A3 «시크릿 혜택이/쉬어가기 찬스가 적용됐어요», 제안은 회원당 1번만(resolveOffer 4번째 인자).
 // v1.2(10-23): K1 알림톡 = 카카오 정보성 검수 수정본(금액·정가·재가입 문장 삭제), 알림톡 [구독해지 철회하기] → K2 철회 페이지(결제 기능 없음).
 // v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
@@ -7,7 +8,7 @@ const won = (n) => `${n.toLocaleString('ko-KR')}원`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const BASE = {
-  user: '김민지', center: '엔짐 영등포점', product: '헬스 구독멤버십', ty: '헬스', price: 43800, listp: 90000,
+  user: '김민지', uname: '윤재현', center: '엔짐 영등포점', product: '헬스 구독멤버십', ty: '헬스', price: 43800, listp: 90000,
   next_md: '11월 15일', next_long: '2026년 11월 15일', next_full: '2026.11.15(일)', next_dot: '2026.11.15', use_end_md: '11월 14일', use_period: '2026.10.15 ~ 2026.11.14',
   alarm_md: '11월 12일', skip_end: '12월 14일', resume: '12월 15일',
   visits: 12, period: '10월 1일~23일', days_left: 22, daily: '하루 2회 이용가능(1/2)', open_msg: '오후 11시 30분 영업종료',
@@ -17,7 +18,7 @@ const BASE = {
   etc_text: '주차가 너무 불편해서요.',
 };
 const STRESS = {
-  ...BASE, center: '엔짐 영등포타임스퀘어 프리미엄 피트니스 앤 스파 2호점', product: '헬스+GX+필라테스 무제한 구독멤버십(연말 D-100 이벤트)', ty: '헬스+GX+필라테스',
+  ...BASE, uname: '남궁윤재현', center: '엔짐 영등포타임스퀘어 프리미엄 피트니스 앤 스파 2호점', product: '헬스+GX+필라테스 무제한 구독멤버십(연말 D-100 이벤트)', ty: '헬스+GX+필라테스',
   price: 1290000, listp: 2580000, visits: 31, days_left: 122, daily: '하루 10회 이용가능(10/10)',
   others: [{ name: '개인락커(대형 · 샤워실 옆 프리미엄 존, 2단 선반 포함)', period: '2026.10.15 ~ 2026.11.14', extra: ['자리정보', 'B-1207 (지하 1층 남자 탈의실 안쪽)'], fee: 150000, due: false },
     { name: '운동복 대여 서비스(상하의 세트 + 수건 2장 무제한 교체)', period: '2026.10.15 ~ 2026.11.14', extra: null, fee: 1290000, due: true },
@@ -26,6 +27,8 @@ const STRESS = {
   branchPool: [['엔짐 경기도 고양시 일산동구 라페스타 프리미엄 피트니스점', '경기 고양시 일산동구 중앙로 1305번길 14, 라페스타 B동 지하 2층'], ['엔짐 답십리점', '서울 동대문구 답십리로 78'], ['엔짐 영등포점', '서울 영등포구 영중로 15']],
   etc_text: '회사 근무 시간이 매주 바뀌는 교대 근무로 바뀌어서 정해진 시간에 운동하기가 어렵고, 집에서 센터까지 거리도 멀어서 당분간은 홈트로 해 보려고 합니다.',
 };
+// 형 예시 긴 값(시안 v3 LONGNAME): 긴 이름 + 긴 지점명, 금액은 보통
+const LONGNAME = { ...BASE, uname: '남궁윤재현', center: '엔짐 영등포타임스퀘어점' };
 const REASONS = [['price', '가격이 부담돼요'], ['busy', '바빠서 갈 시간이 없어요'], ['hurt', '다쳐서 쉬어야 해요'], ['trip', '여행·출장을 가요'],
   ['move', '이사를 가요'], ['effect', '운동 효과가 없어요'], ['etc', '기타(직접 입력)']];
 const RL = Object.fromEntries(REASONS);
@@ -138,24 +141,31 @@ function losses(d) {
     + `<div class="facts"><div class="fact"><span class="i">${ic('run', '#6B6B73', 16)}</span><span>${vis}</span></div>`
     + `<div class="fact"><span class="i">${ic('calx', '#6B6B73', 16)}</span><span>해지하면 <b>${d.next_md}</b> 해지예정<span class="s">${d.use_end_md}까지는 지금처럼 이용할 수 있어요</span></span></div></div>`;
 }
-const OFFER_BTN = { price: '할인 받을게요', skip_off: '할인 받을게요', skip: '한 달 쉴게요', move: '지점 보러 갈게요', pt: '체험권 받을게요', inbody: '측정권 받을게요', keep: '계속 이용할게요' };
+const LOCK = '<svg width="11" height="11" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10.5" rx="2.2" fill="#fff"/><path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7" stroke="#fff" stroke-width="2.6" fill="none"/></svg>';
+const SX = `<div class="sx">${LOCK}시크릿 제안</div>`;
+// 지점명 끝 글자 받침 → 이/가 (괄호로 끝나면 괄호 앞 글자 기준)
+const josa = (w) => { const c = w.replace(/\)+$/, '').slice(-1); return c >= '가' && c <= '힣' && (c.charCodeAt(0) - 0xAC00) % 28 ? '이' : '가'; };
+const secretP = (d, lead) => `${lead ? lead + ' ' : ''}${esc(d.center)}${josa(d.center)} ${esc(d.uname)}님을 위해 따로 준비했어요. 이 화면을 닫으면 다시 받을 수 없어요.`;
+const visitLead = (d) => d.visits ? `이번 달 ${d.visits}번이나 운동하셨잖아요.` : '그동안 함께해 주셔서 고마워요.';
+const OFFER_BTN = { price: '시크릿 혜택 받기', skip_off: '시크릿 혜택 받기', skip: '쉬어가기 찬스 받기', move: '지점 보러 갈게요', pt: '체험권 받을게요', inbody: '측정권 받을게요', keep: '계속 이용할게요' };
 function A2(d, kind, reason, cfg, etcText) {
   let eb = `<div class="eyebrow">고른 이유 · <b>${reason !== 'etc' ? RL[reason] : '기타'}</b></div>`;
   if (reason === 'etc' && etcText) eb += `<div class="quote">${esc(etcText)}</div>`;
   const disc = cfg.disc, after = d.price - disc;
   let head, sub, box;
   if (kind === 'price' || kind === 'skip_off') {
-    sub = kind === 'price' ? `${esc(d.center)}에서 준비한 혜택이에요. 한 번만 적용돼요.` : `바쁜 동안 부담을 덜 수 있게 ${esc(d.center)}에서 준비한 혜택이에요.`;
-    head = `다음 결제를 <em>${won(disc)}</em><br>할인해 드릴게요`;
-    box = `<div class="box"><div class="kv"><span class="k">${d.next_md} 결제</span><span class="v"><s>${won(d.price)}</s><span class="big">${won(after)}</span></span></div>`
+    eb = SX;
+    head = `${esc(d.uname)}님께만 드리는 혜택<br>다음 결제 <em>${won(disc)}</em> 할인`;
+    sub = secretP(d, visitLead(d));
+    box = `<div class="box sec"><div class="kv"><span class="k">${d.next_md} 결제</span><span class="v"><s>${won(d.price)}</s><span class="big">${won(after)}</span></span></div>`
       + `<div class="kv"><span class="k">그다음 결제부터</span><span class="v">월 ${won(d.price)}</span></div></div>`;
   } else if (kind === 'skip') {
-    head = '한 달 쉬어 가세요<br>결제를 <em>한 번 건너뛰어요</em>';
-    sub = '바쁜 일이 끝나면 지금 가격 그대로 다시 시작해요.';
-    box = `<div class="box"><div class="kv"><span class="k">${d.next_md} 결제</span><span class="v"><span class="big">건너뛰기</span></span></div>`
-      + `<div class="kv"><span class="k">쉬는 기간</span><span class="v">${d.next_md}~${d.skip_end}</span></div>`
+    eb = SX;
+    head = `${esc(d.uname)}님께만 드리는<br>쉬어가기 찬스`;
+    sub = secretP(d, '');
+    box = `<div class="box sec"><div class="kv"><span class="k">${d.next_md} 결제</span><span class="v"><span class="big">건너뛰기</span></span></div>`
       + `<div class="kv"><span class="k">다시 결제</span><span class="v">${d.resume} · 월 ${won(d.price)}</span></div>`
-      + '<div class="note">쉬는 기간엔 센터에 입장할 수 없어요.</div></div>';
+      + `<div class="note">쉬는 기간(${d.next_md}~${d.skip_end})엔 센터에 입장할 수 없어요.</div></div>`;
   } else if (kind === 'move') {
     head = '이사 가는 곳 가까이<br><em>다른 지점</em>이 있어요';
     sub = `${esc(d.center)}에서 안내하는 지점이에요. 옮겨서 이용하는 방법은 지점에서 안내해 드려요.`;
@@ -175,18 +185,19 @@ function A2(d, kind, reason, cfg, etcText) {
     + `<div class="bar"><div class="two"><div class="eq go" data-act="reserve">그래도 해지할게요</div><div class="eq keep" data-act="accept">${OFFER_BTN[kind]}</div></div></div>`;
 }
 
-// ───────── A3 제안 적용 완료 (할인 = 시안 A3 그대로, 나머지는 같은 틀에 문구만) ─────────
+// ───────── A3 제안 적용 완료 (할인·쉬어가기 = 시안 v3 A3·A3b 그대로, 나머지는 같은 틀에 문구만) ─────────
 function A3(d, kind, cfg) {
   const after = d.price - cfg.disc;
-  const ok = (h, box) => SB + hdr('', false) + scr(91, '<div class="done">'
-    + `<div class="ok" style="background:#FFE6EE">${ic('check', '#FE2167', 28, 2.4)}</div>`
-    + `<div class="h1">${h}</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>${box}<div class="end"></div></div>`, 96)
+  const ok = (h, box, sx = '', info = '') => SB + hdr('', false) + scr(91, '<div class="done">'
+    + `<div class="ok" style="background:#FFE6EE">${ic('check', '#FE2167', 28, 2.4)}</div>${sx}`
+    + `<div class="h1">${h}</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>${box}${info}<div class="end"></div></div>`, 96)
     + '<div class="stack"><div class="btn pri" data-act="toMembership">내 멤버십으로</div></div>';
   const kv = (k, v) => `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
-  if (kind === 'price' || kind === 'skip_off') return ok('다음 결제 할인이<br>적용됐어요',
-    `<div class="box">${kv(`${d.next_md} 결제`, `<s>${won(d.price)}</s><span class="big">${won(after)}</span>`)}${kv('그다음 결제부터', `월 ${won(d.price)}`)}</div>`);
-  if (kind === 'skip') return ok('다음 결제를<br>한 번 건너뛰어요',
-    `<div class="box">${kv(`${d.next_md} 결제`, '<span class="big">건너뛰기</span>')}${kv('쉬는 기간', `${d.next_md}~${d.skip_end}`)}${kv('다시 결제', `${d.resume} · 월 ${won(d.price)}`)}<div class="note">쉬는 기간엔 센터에 입장할 수 없어요.</div></div>`);
+  if (kind === 'price' || kind === 'skip_off') return ok('시크릿 혜택이<br>적용됐어요',
+    `<div class="box sec">${kv(`${d.next_md} 결제`, `<s>${won(d.price)}</s><span class="big">${won(after)}</span>`)}${kv('그다음 결제부터', `월 ${won(d.price)}`)}</div>`, SX);
+  if (kind === 'skip') return ok('쉬어가기 찬스가<br>적용됐어요',
+    `<div class="box sec">${kv(`${d.next_md} 결제`, '<span class="big">건너뛰기</span>')}${kv('쉬는 기간', `${d.next_md}~${d.skip_end}`)}${kv('다시 결제', `${d.resume} · 월 ${won(d.price)}`)}</div>`, SX,
+    `<div class="info" style="margin-top:14px">${d.use_end_md}까지는 지금처럼 이용하고, 푹 쉬고 ${d.resume}부터 다시 만나요.</div>`);
   if (kind === 'pt' || kind === 'inbody') return ok(`${kind === 'pt' ? 'PT 1회 체험권' : '인바디 측정권'}을<br>쿠폰함에 넣었어요`,
     `<div class="box">${kv('받은 것', `<span class="big">${kind === 'pt' ? 'PT 1회 체험권' : '인바디 측정권'}</span> · 0원`)}${kv('사용 기한', '받은 날부터 30일')}</div>`);
   if (kind === 'move') return ok('가까운 지점을<br>확인해 보세요',
@@ -252,8 +263,10 @@ const K2 = (d, st) => {
 };
 
 // ───────── 사유 → 제안 결정 (README_SPEC 5번 표와 같은 규칙) ─────────
+// member.offerSeenAt: 제안 화면(A2)을 한 번이라도 본 회원은 이유·설정과 관계없이 제안 없이 해지 예약(회원당 1번, README_SPEC 5-1).
 // pending: 이미 받아 둔 할인·쉬어가기가 다음 결제에 걸려 있으면 금전 제안(1·2번)은 다시 주지 않는다(중복 적용 금지).
-function resolveOffer(reason, cfg, sub) {
+function resolveOffer(reason, cfg, sub, member) {
+  if (member && member.offerSeenAt) return null;
   const money = !(sub && (sub.discountPending || sub.skipPending));
   const keep = cfg.keep_on ? 'keep' : null;
   if (reason === 'price') return cfg.price_on && money ? 'price' : keep;

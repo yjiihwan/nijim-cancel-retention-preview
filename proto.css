@@ -43,3 +43,7 @@ body.mode-admin .demo .app-only{display:none}
 @media (min-width:900px){body.mode-admin .demo .seg.h button{flex:0 0 auto}}
 /* v1.1: 내 멤버십(실제 앱 재현) — 하단 탭 고정 + 본문 스크롤 */
 .phone .rm-view.scr{top:103px;bottom:88px}
+/* v1.3: 390보다 좁은 폰(360 등)에선 화면 폭에 맞춤, 캡처(shot)는 폰 높이 = 창 높이 */
+@media (max-width:389.98px){body.proto .phone{width:100vw}}
+body.shot .phone:not(.long){height:100vh}
+@media (min-width:900px){body.mode-admin .demo #p-data button{flex:0 0 auto}}

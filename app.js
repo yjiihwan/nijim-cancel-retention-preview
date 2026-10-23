@@ -13,11 +13,11 @@ const S = {
   mode: 'app', data: 'base', visits0: false, feature: true,
   preset: 'b1', cfg: null, draft: null, ui: { pvI: 0, savedAt: SAVED0 },
   screen: 'A0', reason: null, etc: '', kind: null, scrollTop: 0, toast: true,
-  sub: null, attempts: [], log: '',
+  sub: null, member: null, attempts: [], log: '',
 };
 // two/zero: 기타 서비스 2개·0개(시안 X_A0_기타서비스2개·0개와 같은 값, 캡처 전용)
 const TWO = { ...BASE, others: [...BASE.others, { name: '운동복 대여', period: '2026.10.15 ~ 2026.11.14', extra: null, fee: 10000, due: true }] }, ZERO = { ...BASE, others: [] };
-const D = () => { const d = S.data === 'stress' ? STRESS : S.data === 'two' ? TWO : S.data === 'zero' ? ZERO : BASE; return S.visits0 ? { ...d, visits: 0 } : d; };
+const D = () => { const d = S.data === 'stress' ? STRESS : S.data === 'long' ? LONGNAME : S.data === 'two' ? TWO : S.data === 'zero' ? ZERO : BASE; return S.visits0 ? { ...d, visits: 0 } : d; };
 const discNum = (raw) => Number(String(raw).replace(/[^0-9]/g, '') || 0);
 function mkCfg(p) {
   const d = D();
@@ -26,7 +26,9 @@ function mkCfg(p) {
 }
 const clone = (c) => ({ ...c, branches: c.branches.map((b) => [...b]) });
 const newSub = () => ({ status: 'active', discountPending: 0, skipPending: false, couponIssued: null });
-function reset() { S.sub = newSub(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
+// 회원(구독이 아니라 사람) 단위 기록 — 제안을 한 번 보면 남고, 해지 철회·재진입·재가입해도 지워지지 않는다(조작판 «처음부터»만 지움)
+const newMember = () => ({ offerSeenAt: null, offerSeenType: null });
+function reset() { S.sub = newSub(); S.member = newMember(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
 const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', move: 'branch', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
 const cur = () => S.attempts[S.attempts.length - 1];
 
@@ -38,7 +40,7 @@ function render() {
   let h;
   switch (S.screen) {
     case 'A0': h = A0(d, LONG); break;
-    case 'A1': h = A1(d, S.reason, S.etc, S.reason && !resolveOffer(S.reason, c, S.sub)); break;
+    case 'A1': h = A1(d, S.reason, S.etc, S.reason && !resolveOffer(S.reason, c, S.sub, S.member)); break;
     case 'A2': h = A2(d, S.kind, S.reason, c, S.etc.trim()); break;
     case 'A3': h = A3(d, S.kind, c); break;
     case 'A4': h = A4(d); break;
@@ -88,16 +90,19 @@ function stateText() {
     `pending_discount_amount    = ${s.discountPending}`,
     `skip_next_payment          = ${s.skipPending}`,
     `issued_coupon              = ${s.couponIssued || 'null'}`,
+    '— member (회원당 1번) —',
+    `cancel_offer_seen_at       = ${S.member.offerSeenAt || 'null'}`,
+    `cancel_offer_seen_type     = ${S.member.offerSeenType || 'null'}`,
   ];
   if (a) lines.push('— 마지막 cancel_request —',
     `reason_code   = ${a.reason}${a.reason_text ? ` («${a.reason_text.slice(0, 20)}${a.reason_text.length > 20 ? '…' : ''}»)` : ''}`,
-    `offer_type    = ${a.offer_type || 'null'}`, `offer_accepted= ${a.offer_accepted}`, `result        = ${a.result || '(진행 중)'}`,
+    `offer_type    = ${a.offer_type || (a.offer_skipped ? `null (${a.offer_skipped})` : 'null')}`, `offer_accepted= ${a.offer_accepted}`, `result        = ${a.result || '(진행 중)'}`,
     `withdrawn_via = ${a.withdrawn_via || 'null'}`);
   return lines.join('\n');
 }
 function renderPanel() {
   const set = (sel, v) => document.querySelectorAll(`${sel} button`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  set('#p-mode', S.mode); set('#p-data', S.data); set('#p-vis', S.visits0 ? '0' : '12'); set('#p-feat', S.feature ? '1' : '0');
+  set('#p-mode', S.mode); set('#p-data', S.data); set('#p-seen', S.member.offerSeenAt ? '1' : '0'); set('#p-vis', S.visits0 ? '0' : '12'); set('#p-feat', S.feature ? '1' : '0');
   set('#p-preset', S.preset);
   set('#p-reason', S.screen === 'A2' || S.screen === 'A1' ? S.reason : '');
   $('#p-state').textContent = stateText();
@@ -116,15 +121,18 @@ const ACT = {
   back() { if (S.screen === 'A2') return go('A1'); S.scrollTop = 'svc'; go('A0'); },
   reason(el) { S.reason = el.dataset.r; render(); if (S.reason === 'etc') $('#etc')?.focus(); },
   next() {
-    S.kind = resolveOffer(S.reason, S.cfg, S.sub);
+    S.kind = resolveOffer(S.reason, S.cfg, S.sub, S.member);
     if (!S.kind) return ACT.reserve();
     S.attempts.push({ reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: OFFER_TYPE[S.kind], offer_accepted: false, result: null, withdrawn_via: null });
+    // 화면을 띄우는 순간 기록(수락 여부·뒤로가기와 무관) — «이 화면을 닫으면 다시 받을 수 없어요»
+    if (!S.member.offerSeenAt) { S.member.offerSeenAt = '2026-10-23T14:30:00+09:00'; S.member.offerSeenType = OFFER_TYPE[S.kind]; }
     go('A2');
   },
   reserve() {
-    if (S.screen === 'A1') S.attempts.push({ reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: null, offer_accepted: false, result: null, withdrawn_via: null });
+    const skipped = S.screen === 'A1' && S.member.offerSeenAt;
+    if (S.screen === 'A1') S.attempts.push({ reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: null, offer_skipped: skipped ? 'already_seen' : null, offer_accepted: false, result: null, withdrawn_via: null });
     if (S.sub.status !== 'reserved') { S.sub.status = 'reserved'; cur().result = 'reserved'; }
-    S.log = '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.'; go('A4');
+    S.log = (skipped ? '이미 제안을 본 회원 → 제안 없이 바로 해지예약. ' : '') + '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.'; go('A4');
   },
   accept() {
     const k = S.kind, a = cur();
@@ -177,12 +185,14 @@ const PANEL = {
   mode(v) { S.mode = v; render(); },
   data(v) { S.data = v; S.cfg = mkCfg(S.preset || 'b1'); S.draft = clone(S.cfg); render(); },
   vis(v) { S.visits0 = v === '0'; render(); },
+  seen(v) { S.member = v === '1' ? { offerSeenAt: '2026-09-02T21:10:00+09:00', offerSeenType: 'discount' } : newMember(); S.log = v === '1' ? '제안을 이미 본 회원으로 설정(9/2에 할인 제안을 봄) → 이유를 골라도 제안 없이 해지 예약.' : '제안 본 기록 지움.'; render(); },
   feat(v) { S.feature = v === '1'; S.log = S.feature ? '' : '기능 꺼짐: [구독해지]를 누르면 지금 앱 동작 그대로(회유 화면 없음).'; render(); },
   preset(v) { S.preset = v; S.cfg = mkCfg(v); S.draft = clone(S.cfg); S.ui.savedAt = SAVED0; render(); },
   reason(v) {
-    if (S.sub.status !== 'active') reset();
-    S.mode = 'app'; S.screen = 'A1'; S.reason = v; S.etc = v === 'etc' ? D().etc_text : ''; S.log = '';
-    if (resolveOffer(v, S.cfg, S.sub)) ACT.next(); else render();
+    if (S.sub.status !== 'active') { const m = S.member; reset(); S.member = m; }
+    S.mode = 'app'; S.screen = 'A1'; S.reason = v; S.etc = v === 'etc' ? D().etc_text : '';
+    S.log = S.member.offerSeenAt ? '이미 제안을 본 회원이라 제안 화면이 뜨지 않아요(조작판 «제안 본 기록 → 없음»으로 지우면 다시 보여요).' : '';
+    if (resolveOffer(v, S.cfg, S.sub, S.member)) ACT.next(); else render();
   },
   time(v) {
     const d = D(), s = S.sub;
@@ -214,10 +224,12 @@ document.addEventListener('click', (e) => {
 
 // ───────── 시작: ?go=시안 화면 이름(검사·캡처용) ─────────
 const GO = {
-  A0: () => {}, 'A0-2': () => { S.data = 'two'; }, 'A0-0': () => { S.data = 'zero'; }, A1: () => { PANEL.reason('price'); S.screen = 'A1'; S.attempts = []; },
+  A0: () => {}, 'A0-2': () => { S.data = 'two'; }, 'A0-0': () => { S.data = 'zero'; }, A1: () => { PANEL.reason('price'); S.screen = 'A1'; S.attempts = []; S.member = newMember(); },
   A1b: () => { S.screen = 'A1'; S.reason = 'etc'; S.etc = D().etc_text; },
   A1c: () => { PANEL.preset('off'); S.screen = 'A1'; S.reason = 'busy'; },
   'A2-1': () => PANEL.reason('price'),
+  'A2-1z': () => { S.visits0 = true; PANEL.reason('price'); },
+  A1seen: () => { PANEL.seen('1'); PANEL.reason('price'); },
   'A2-2': () => { PANEL.preset('all'); PANEL.reason('busy'); },
   'A2-2b': () => PANEL.reason('busy'),
   'A2-3': () => { PANEL.preset('all'); PANEL.reason('move'); },
@@ -225,6 +237,7 @@ const GO = {
   'A2-4b': () => { PANEL.preset('inbody'); PANEL.reason('effect'); },
   'A2-5': () => PANEL.reason('etc'),
   A3: () => { PANEL.reason('price'); ACT.accept(); },
+  A3b: () => { PANEL.preset('all'); PANEL.reason('busy'); ACT.accept(); },
   A4: () => { PANEL.reason('price'); ACT.reserve(); },
   A5: () => { PANEL.reason('price'); ACT.reserve(); ACT.toMembership(); },
   A6: () => { PANEL.reason('price'); ACT.reserve(); ACT.withdraw(); },
@@ -239,7 +252,8 @@ const GO = {
 };
 if (qs.get('shot') === '1') document.body.classList.add('shot');
 const LONG = qs.get('long') === '1'; // 캡처 비교용: A0·A5를 시안처럼 세로로 긴 전체 화면으로
-S.data = qs.get('d') === 'stress' ? 'stress' : 'base';
+S.data = ['stress', 'long'].includes(qs.get('d')) ? qs.get('d') : 'base';
+if (qs.get('v') === '0') S.visits0 = true;
 S.cfg = mkCfg('b1'); S.draft = clone(S.cfg); reset();
 const g = qs.get('go');
 if (g && GO[g]) GO[g]();
