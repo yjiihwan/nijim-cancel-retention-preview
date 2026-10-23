@@ -41,3 +41,5 @@ body.mode-admin .demo .app-only{display:none}
 @media (min-width:900px){body.mode-admin .demo .seg.r button{flex:0 0 auto}}
 .seg.h button{flex:1 1 calc(50% - 6px)}
 @media (min-width:900px){body.mode-admin .demo .seg.h button{flex:0 0 auto}}
+/* v1.1: 내 멤버십(실제 앱 재현) — 하단 탭 고정 + 본문 스크롤 */
+.phone .rm-view.scr{top:103px;bottom:88px}

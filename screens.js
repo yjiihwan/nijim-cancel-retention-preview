@@ -1,19 +1,27 @@
 // 니짐내짐 구독 «해지예약 회유» B안 — 화면 그리기. 시안(_src/build.py·admin.py) 마크업을 그대로 옮겼다(클래스·문구·숫자 동일).
+// v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
 'use strict';
 const won = (n) => `${n.toLocaleString('ko-KR')}원`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const BASE = {
-  user: '김민지', center: '엔짐 영등포점', product: '헬스 구독 멤버십', ty: '헬스', price: 43800, listp: 90000,
-  next_md: '11월 15일', next_full: '2026.11.15(일)', alarm_md: '11월 12일', skip_end: '12월 14일', resume: '12월 15일',
-  visits: 12, period: '10월 1일~23일', days_left: 23,
+  user: '김민지', center: '엔짐 영등포점', product: '헬스 구독멤버십', ty: '헬스', price: 43800, listp: 90000,
+  next_md: '11월 15일', next_full: '2026.11.15(일)', next_dot: '2026.11.15', use_end_md: '11월 14일', use_period: '2026.10.15 ~ 2026.11.14',
+  alarm_md: '11월 12일', skip_end: '12월 14일', resume: '12월 15일',
+  visits: 12, period: '10월 1일~23일', days_left: 22, daily: '하루 2회 이용가능(1/2)', open_msg: '오후 11시 30분 영업종료',
+  others: [{ name: '개인락커', period: '2026.10.15 ~ 2026.11.14', extra: ['자리정보', 'A302'], fee: 5000, due: false }],
+  pay: ['토스체크카드', '체크 9230', '토스뱅크청소년맞춤 할인혜택 팡팡 카드'], peek: '니짐이내짐 휘트니스',
   branchPool: [['엔짐 답십리점', '서울 동대문구 답십리로 78'], ['엔짐 신도림점', '서울 구로구 경인로 662'], ['엔짐 목동점', '서울 양천구 목동동로 257']],
   etc_text: '주차가 너무 불편해서요.',
 };
 const STRESS = {
-  ...BASE, center: '엔짐 영등포타임스퀘어 프리미엄 피트니스 앤 스파 2호점', product: '헬스+GX+필라테스 무제한 구독 멤버십(연말 D-100 이벤트)', ty: '헬스+GX+필라테스',
-  price: 1290000, listp: 2580000, visits: 31,
+  ...BASE, center: '엔짐 영등포타임스퀘어 프리미엄 피트니스 앤 스파 2호점', product: '헬스+GX+필라테스 무제한 구독멤버십(연말 D-100 이벤트)', ty: '헬스+GX+필라테스',
+  price: 1290000, listp: 2580000, visits: 31, days_left: 122, daily: '하루 10회 이용가능(10/10)',
+  others: [{ name: '개인락커(대형 · 샤워실 옆 프리미엄 존, 2단 선반 포함)', period: '2026.10.15 ~ 2026.11.14', extra: ['자리정보', 'B-1207 (지하 1층 남자 탈의실 안쪽)'], fee: 150000, due: false },
+    { name: '운동복 대여 서비스(상하의 세트 + 수건 2장 무제한 교체)', period: '2026.10.15 ~ 2026.11.14', extra: null, fee: 1290000, due: true },
+    { name: '월정기 주차권(지하 2층 기계식 주차장 · SUV 불가)', period: '2026.10.15 ~ 2026.11.14', extra: ['차량번호', '123가 4567'], fee: 1290000, due: false }],
+  pay: ['삼성카드 taptap O 모바일 단독 프리미엄 에디션 체크카드', '신용 1234', '삼성카드 taptap O 모바일 단독 프리미엄 에디션 · 통신·스트리밍·편의점 할인'],
   branchPool: [['엔짐 경기도 고양시 일산동구 라페스타 프리미엄 피트니스점', '경기 고양시 일산동구 중앙로 1305번길 14, 라페스타 B동 지하 2층'], ['엔짐 답십리점', '서울 동대문구 답십리로 78'], ['엔짐 영등포점', '서울 영등포구 영중로 15']],
   etc_text: '회사 근무 시간이 매주 바뀌는 교대 근무로 바뀌어서 정해진 시간에 운동하기가 어렵고, 집에서 센터까지 거리도 멀어서 당분간은 홈트로 해 보려고 합니다.',
 };
@@ -40,38 +48,70 @@ const SB = '<div class="sb"><span>12:58</span><span class="ic"><svg width="18" h
   + '<svg width="16" height="12" viewBox="0 0 16 12" fill="#111"><path d="M8 9.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM4.7 7.4a4.7 4.7 0 0 1 6.6 0l-1.1 1.1a3.1 3.1 0 0 0-4.4 0zM2.2 4.9a8.2 8.2 0 0 1 11.6 0l-1.1 1.1a6.6 6.6 0 0 0-9.4 0zM0 2.5A11.3 11.3 0 0 1 16 2.5l-1.1 1.1a9.7 9.7 0 0 0-13.8 0z"/></svg>'
   + '<svg width="27" height="12" viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3" fill="none" stroke="#111" stroke-opacity=".4"/><rect x="2" y="2" width="15" height="8" rx="1.5" fill="#111"/><rect x="25" y="4" width="1.5" height="4" rx=".7" fill="#111" fill-opacity=".4"/></svg></span></div>';
 const hdr = (t, back = true) => `<div class="hdr">${back ? `<div class="back" data-act="back">${ic('back', '#111')}</div>` : ''}${t}</div>`;
-const tab = () => `<div class="tab">${[['home', '홈'], ['pin', '내주변'], ['card', '멤버십'], ['menu', '전체']].map(([k, l]) => `<div class="it${k === 'card' ? ' on' : ''}">${ic(k, k === 'card' ? '#FE2167' : '#111')}<span>${l}</span></div>`).join('')}</div><div class="home-ind"></div>`;
 const DOOR = '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7A45"/><stop offset="1" stop-color="#FF0065"/></linearGradient></defs>'
   + '<path d="M4 3.5h11.5a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H4z" fill="url(#dg)"/><circle cx="13" cy="13" r="1.3" fill="#fff" fill-opacity=".9"/>'
   + '<path d="M24 13H16.5M19.5 9.8 16.3 13l3.2 3.2" stroke="#FF0065" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const STAR = '<svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#fff" fill-opacity=".3"/><path d="m12 5.5 1.9 4 4.3.5-3.2 3 .9 4.3-3.9-2.2-3.9 2.2.9-4.3-3.2-3 4.3-.5z" fill="#fff"/></svg>';
 const SYM = '<img src="nijim_symbol_black.svg" width="24" height="24" alt="">';
 // 본문 스크롤 틀: 시안의 일반 흐름 위치(top)와 같은 자리에서 시작하고, 하단 버튼 바만큼 아래 여백을 둔다.
 const scr = (top, inner, pad = 0) => `<div class="scr" style="top:${top}px">${inner}<div class="padb" style="height:${pad}px"></div></div>`;
 
-// ───────── 내 멤버십(현행 화면 + 구독 정보 블록) ─────────
-const mmCard = (d) => `<div class="mm-card"><div class="cn">${esc(d.center)}</div><div class="ty">${esc(d.ty)}</div><div class="pd">월 구독 멤버십</div>`
-  + `<div class="dl"><b>${d.days_left}</b>일 남음</div><div class="dy">하루 1회 이용가능(0/1)</div></div>`;
-function mmBody(d, reserved) {
-  const nxt = reserved ? `<div class="row"><div class="k">다음 결제</div><div class="v">없음 · ${d.next_md} 종료 예정</div></div>`
-    : `<div class="row"><div class="k">다음 결제일</div><div class="v">${d.next_full}</div></div>`;
-  const sub = `<div class="mm-detail mm-sub" style="top:678px"><div class="t">구독 정보 <span class="subbadge">${STAR}구독멤버십</span></div>`
-    + `<div class="row"><div class="k">이용 금액</div><div class="v">월 ${won(d.price)}<span class="ev">이벤트가</span></div></div>${nxt}`
-    + `<div class="cbtn" data-act="${reserved ? 'withdraw' : 'startCancel'}">${reserved ? '해지 예약 취소' : '구독 해지'}</div></div>`;
-  return '<div class="mm" style="height:1080px"><div class="mm-peek"></div>' + mmCard(d)
-    + `<div class="mm-enter-peek"></div><div class="mm-enter">${DOOR}입장하기</div><div class="mm-ok">정상운영 중입니다.</div>`
-    + '<div class="mm-pts"><span class="coin">P</span><span class="l">보유포인트</span><span class="a">12,350원</span></div>'
-    + '<div class="mm-band"></div><div class="mm-sect">멤버십 상세정보</div>'
-    + `<div class="mm-detail"><div class="t">센터정보</div><div class="k">센터명</div><div class="v">${esc(d.center)}</div><div class="k">센터주소</div><div class="v">서울 영등포구 영중로 15</div></div>`
-    + sub + '</div>';
+// ───────── 내 멤버십 = 형 실제 앱 캡처 재현(시안 v2 rm_* 그대로, 구성·색·버튼 톤 임의 변경 금지) ─────────
+const CHEV = '<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="9" fill="#F0397D"/><path d="m7.5 5.5 3.5 3.5-3.5 3.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const I_LOC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2577E8" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.6" fill="#2577E8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+const I_TEL = '<svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="#3B9F44"/></svg>';
+const I_KAKAO = '<svg width="19" height="19" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#FAE100"/><path d="M10 4.6c-3.3 0-5.9 2.1-5.9 4.6 0 1.6 1 3 2.6 3.8l-.6 2.3 2.6-1.7c.4.1.9.1 1.3.1 3.3 0 5.9-2.1 5.9-4.5S13.3 4.6 10 4.6z" fill="#3C1E1E"/>'
+  + '<text x="10" y="11.4" text-anchor="middle" font-size="5.2" font-weight="800" fill="#FAE100" font-family="Helvetica,Arial,sans-serif">Ch</text></svg>';
+function rmTabbar(fix) {
+  const P = { home: '<path d="M4 10.5 12 4l8 6.5V20h-5v-5.5h-6V20H4z"/>',
+    near: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+    card: '<rect x="3" y="6" width="18" height="13" rx="2.5" transform="rotate(-12 12 12)"/><path d="M3.5 10.5 20 7" /><circle cx="16" cy="14" r="1.2"/>',
+    chat: '<path d="M12 4c4.7 0 8.5 3 8.5 6.8s-3.8 6.8-8.5 6.8c-.9 0-1.8-.1-2.6-.3L5 19.5l1-3.6C4.4 14.7 3.5 12.9 3.5 10.8 3.5 7 7.3 4 12 4z"/><circle cx="8.3" cy="10.8" r=".6" fill="currentColor"/><circle cx="12" cy="10.8" r=".6" fill="currentColor"/><circle cx="15.7" cy="10.8" r=".6" fill="currentColor"/>',
+    all: '<path d="M4 6h16M4 12h16M4 18h16"/>' };
+  const its = [['home', '홈'], ['near', '내주변'], ['card', '회원권'], ['chat', '채팅'], ['all', '전체']].map(([k, l]) => `<div class="it${k === 'card' ? ' on' : ''}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${P[k]}</svg><span>${l}</span></div>`).join('');
+  return `<div class="rm-tab${fix ? ' fix' : ''}">${its}<div class="hi"></div></div>`;
 }
-const A0 = (d) => SB + '<div class="hdr mm-hdr">내 멤버십</div>' + scr(103, mmBody(d, false)) + tab();
-function A5(d) {
-  const band = `<div class="rsv"><div class="tx"><div class="t1">${d.next_md} 종료 예정</div><div class="t2">해지 예약됨 · ${esc(d.product)}</div></div><div class="cbtn" data-act="withdraw">해지 취소</div></div>`;
-  return SB + '<div class="hdr mm-hdr">내 멤버십</div>' + scr(103, band + mmBody(d, true)) + tab();
+// 회유가 붙는 곳은 «이용중인 서비스»(구독멤버십) 버튼 2개뿐: 회색 [구독해지]=startCancel(→A1), 초록 [구독해지 철회]=withdraw(원탭).
+function rmMainService(d, due) {
+  const acts = due ? `<div class="rm-acts"><div class="rm-btn grn" data-k="withdraw" data-act="withdraw">구독해지 철회</div><span class="rm-due">${d.next_dot} 해지예정</span></div>`
+    : '<div class="rm-acts"><div class="rm-btn" data-k="cancel" data-act="startCancel">구독해지</div></div>';
+  return `<div class="rm-box rm-svc" id="svc"><div class="t">이용중인 서비스</div><div class="rm-sv"><div class="nm">${esc(d.product)}</div>`
+    + `<div class="ln">이용기간 : ${d.use_period}</div><div class="ln">이용횟수 : ${d.daily}</div><div class="ln">월 구독료 : ${won(d.price)}</div>${acts}</div></div>`;
 }
-const A6 = (d) => SB + '<div class="hdr mm-hdr">내 멤버십</div>' + scr(103, mmBody(d, false)) + tab()
-  + `<div class="toast" data-act="hideToast">${ic('check', '#5BE0A6', 20, 2.4)}<div><b>해지 예약을 취소했어요</b><div class="s">${d.next_md}에 월 ${won(d.price)}이 결제돼요.</div></div></div>`;
+// 기타 서비스(개인락커 등) 버튼은 지금 앱 동작 그대로 — 회유 흐름 없음(형 확인 항목).
+function rmOtherServices(d) {
+  if (!d.others.length) return '';
+  const items = d.others.map((o, i) => {
+    const ex = o.extra ? `<div class="ln">${esc(o.extra[0])} : ${esc(o.extra[1])}</div>` : '';
+    const acts = o.due ? `<div class="rm-acts"><div class="rm-btn grn" data-act="otherWithdraw" data-i="${i}">구독해지 철회</div><span class="rm-due">${d.next_dot} 해지예정</span></div>`
+      : `<div class="rm-acts"><div class="rm-btn" data-act="otherCancel" data-i="${i}">구독해지</div></div>`;
+    return `<div class="rm-sv"><div class="nm">${esc(o.name)}</div><div class="ln">이용기간 : ${o.period}</div>${ex}<div class="ln">월 구독료 : ${won(o.fee)}</div>${acts}</div>`;
+  }).join('');
+  return `<div class="rm-box"><div class="t">이용중인 기타 서비스</div>${items}</div>`;
+}
+function rmContent(d, due) {
+  const card = `<div class="rm-card"><div class="cn"><span>${esc(d.center)}</span>${CHEV}</div>`
+    + `<div><div class="ty">${esc(d.ty)}</div><div class="ty">구독멤버십</div><div class="dl"><b>${d.days_left}</b>일 남음</div><div class="dy">${d.daily}</div></div></div>`;
+  const peek = `<div class="rm-card rm-peek"><div class="cn"><span>${d.peek}</span></div><div><div class="ty">헬스</div><div class="ty">3개월</div><div class="dl"><b>51</b>일 남음</div><div class="dy">하루 1회</div></div></div>`;
+  const pay = d.pay;
+  return `<div class="rm-cards">${card}${peek}</div>`
+    + `<div class="rm-enters"><div class="rm-enter">${DOOR}입장하기</div><div class="rm-enter rm-peek"></div></div>`
+    + `<div class="rm-open">${d.open_msg}</div><div class="rm-band"></div><div class="rm-sect">회원권 상세정보</div>`
+    + `<div class="rm-box"><div class="t">센터정보</div><div class="nm" style="font-weight:500">센터명</div><div class="ln">${esc(d.center)}</div>`
+    + `<div class="rm-cbs"><div class="rm-cb b">${I_LOC}위치보기</div><div class="rm-cb g">${I_TEL}전화문의</div><div class="rm-cb k">${I_KAKAO}카톡문의</div></div></div>`
+    + rmMainService(d, due) + rmOtherServices(d)
+    + '<div class="rm-add">서비스추가</div>'
+    + `<div class="rm-box"><div class="t">결제정보</div><div class="nm" style="font-weight:500">결제카드</div>`
+    + `<div class="rm-pay"><div class="rm-cc"><div class="a">${esc(pay[0])}</div><div class="b">${esc(pay[1])}</div><div class="c">${esc(pay[2])}</div></div><div class="rm-chg">결제카드<br>변경하기</div></div>`
+    + `<div class="ln" style="margin-top:12px">다음결제일 : ${d.next_dot}</div></div>`;
+}
+// long=true: 시안 A0·A5처럼 세로로 긴 전체 화면(캡처 비교용). 평소엔 탭 고정 + 본문 스크롤.
+const rmScreen = (d, due, long, toast = '') => long
+  ? SB + '<div class="hdr mm-hdr">내 멤버십</div>' + rmContent(d, due) + rmTabbar(false)
+  : SB + '<div class="hdr mm-hdr">내 멤버십</div>' + `<div class="rm-view scr">${rmContent(d, due)}<div class="padb" style="height:18px"></div></div>` + toast + rmTabbar(true);
+const A0 = (d, long) => rmScreen(d, false, long);
+const A5 = (d, long) => rmScreen(d, true, long);
+const A6 = (d) => rmScreen(d, false, false,
+  `<div class="toast" style="bottom:100px" data-act="hideToast">${ic('check', '#5BE0A6', 20, 2.4)}<div><b>구독해지를 철회했어요</b><div class="s">${d.next_md}에 월 구독료 ${won(d.price)}이 결제돼요.</div></div></div>`);
 
 // ───────── A1 해지 이유(1화면) ─────────
 function A1(d, sel, etcText, off) {
@@ -81,9 +121,9 @@ function A1(d, sel, etcText, off) {
     if (k === 'etc' && sel === 'etc') rows += `<div class="ta"><textarea id="etc" maxlength="100" rows="1" placeholder="이유를 적어 주세요(선택)">${esc(etcText)}</textarea><div class="cnt"><span id="etcn">${[...etcText].length}</span>/100</div></div>`;
   }
   const cta = !sel ? '<div class="btn dis">다음</div>' : off ? '<div class="btn ink" data-act="reserve">해지 예약하기</div>' : '<div class="btn ink" data-act="next">다음</div>';
-  const hint = sel && off ? `<div class="hint">누르면 바로 해지 예약돼요. ${d.next_md}까지는 지금처럼 이용할 수 있어요.</div>` : '';
-  return SB + hdr('구독 해지') + scr(91, '<div class="body"><div class="h1" style="margin-top:14px">해지하려는 이유를<br>하나만 골라 주세요</div>'
-    + `<div class="info">지금 해지해도 <b>${d.next_md}까지</b> 이용할 수 있어요. 그날 다음 결제가 되지 않고 구독이 끝나요.</div>`
+  const hint = sel && off ? `<div class="hint">누르면 바로 해지 예약돼요. ${d.use_end_md}까지는 지금처럼 이용할 수 있어요.</div>` : '';
+  return SB + hdr('구독해지') + scr(91, '<div class="body"><div class="h1" style="margin-top:14px">해지하려는 이유를<br>하나만 골라 주세요</div>'
+    + `<div class="info">지금 해지해도 <b>${d.use_end_md}까지</b> 이용할 수 있어요. ${d.next_md} 다음 결제가 되지 않고 구독이 해지돼요.</div>`
     + `<div class="rlist">${rows}</div><div class="end"></div></div>`, sel && off ? 130 : 110)
     + `<div class="bar">${hint}${cta}</div>`;
 }
@@ -95,7 +135,7 @@ function losses(d) {
     + `<div class="c keep"><div class="l ev">지금 내 구독 · 이벤트가</div><div class="pr"><small>월</small>${won(d.price)}</div><div class="d">유지하면 이 가격 그대로</div></div>`
     + `<div class="c"><div class="l">해지 후 다시 가입하면</div><div class="pr"><small>월</small>${won(d.listp)}</div><div class="d">정가</div></div></div>`
     + `<div class="facts"><div class="fact"><span class="i">${ic('run', '#6B6B73', 16)}</span><span>${vis}</span></div>`
-    + `<div class="fact"><span class="i">${ic('calx', '#6B6B73', 16)}</span><span>해지하면 <b>${d.next_md}</b>에 끝나요<span class="s">그날까지는 지금처럼 이용할 수 있어요</span></span></div></div>`;
+    + `<div class="fact"><span class="i">${ic('calx', '#6B6B73', 16)}</span><span>해지하면 <b>${d.next_md}</b> 해지예정<span class="s">${d.use_end_md}까지는 지금처럼 이용할 수 있어요</span></span></div></div>`;
 }
 const OFFER_BTN = { price: '할인 받을게요', skip_off: '할인 받을게요', skip: '한 달 쉴게요', move: '지점 보러 갈게요', pt: '체험권 받을게요', inbody: '측정권 받을게요', keep: '계속 이용할게요' };
 function A2(d, kind, reason, cfg, etcText) {
@@ -130,7 +170,7 @@ function A2(d, kind, reason, cfg, etcText) {
     sub = '해지는 언제든 다시 할 수 있어요.';
     box = '';
   }
-  return SB + hdr('구독 해지') + scr(91, '<div class="body">' + eb + `<div class="h1">${head}</div><div class="p">${sub}</div>` + box + losses(d) + '<div class="end"></div></div>', 110)
+  return SB + hdr('구독해지') + scr(91, '<div class="body">' + eb + `<div class="h1">${head}</div><div class="p">${sub}</div>` + box + losses(d) + '<div class="end"></div></div>', 110)
     + `<div class="bar"><div class="two"><div class="eq go" data-act="reserve">그래도 해지할게요</div><div class="eq keep" data-act="accept">${OFFER_BTN[kind]}</div></div></div>`;
 }
 
@@ -157,13 +197,14 @@ function A3(d, kind, cfg) {
 const A4 = (d) => SB + hdr('', false) + scr(91, '<div class="done">'
   + `<div class="ok">${ic('cal', '#202024', 26)}</div>`
   + `<div class="h1">해지 예약됐어요</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>`
-  + `<div class="box"><div class="kv"><span class="k">이용</span><span class="v">${d.next_md}까지 지금처럼</span></div>`
+  + `<div class="box"><div class="kv"><span class="k">이용</span><span class="v">${d.use_end_md}까지 지금처럼</span></div>`
+  + `<div class="kv"><span class="k">해지예정일</span><span class="v">${d.next_dot}</span></div>`
   + '<div class="kv"><span class="k">다음 결제</span><span class="v">없음</span></div>'
   + `<div class="kv"><span class="k">알림</span><span class="v">${d.alarm_md} 카카오 알림톡</span></div></div>`
-  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.next_md} 전까지 언제든</b> 해지를 취소할 수 있어요. 취소하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, 158)
-  + '<div class="stack"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">해지 취소</div></div>';
+  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.use_end_md}까지 언제든</b> 내 멤버십의 <b>[구독해지 철회]</b>로 되돌릴 수 있어요. 철회하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, 158)
+  + '<div class="stack"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">구독해지 철회</div></div>';
 
-// ───────── K1 알림톡(종료 3일 전) ─────────
+// ───────── K1 알림톡(해지예정 3일 전) ─────────
 const KAKAO_CSS = `<style>
 .kk{position:absolute;inset:0;background:#B2C7D9}
 .kk .top{height:91px;background:#B2C7D9}
@@ -181,14 +222,14 @@ const KAKAO_CSS = `<style>
 .kk .time{font-size:11px;color:#3A4A5A;align-self:flex-end;margin-left:6px}
 </style>`;
 function K1(d) {
-  const body = '<div class="t">구독 종료 3일 전 안내</div>'
-    + `${esc(d.user)}님, 이용 중인 구독 멤버십이 ${d.next_md}에 종료돼요.<br><br>`
+  const body = '<div class="t">구독 해지예정 3일 전 안내</div>'
+    + `${esc(d.user)}님, 이용 중인 구독멤버십이 ${d.next_md}에 해지될 예정이에요. ${d.use_end_md}까지 이용할 수 있어요.<br><br>`
     + `<div class="r">- 센터: ${esc(d.center)}</div><div class="r">- 멤버십: ${esc(d.product)}</div>`
-    + `<div class="r">- 종료 예정일: 2026년 ${d.next_md}</div><div class="r">- 지금 이용 금액: 월 ${won(d.price)}</div><br>`
-    + `종료 전에 해지를 취소하면 지금 이용 금액 그대로 이어서 이용할 수 있어요. 종료 후 다시 가입하면 그때의 판매 가격(현재 정가 월 ${won(d.listp)})이 적용돼요.`;
+    + `<div class="r">- 해지예정일: 2026년 ${d.next_md}</div><div class="r">- 월 구독료: ${won(d.price)}</div><br>`
+    + `해지예정일 전에 구독해지를 철회하면 지금 월 구독료 그대로 이어서 이용할 수 있어요. 해지 후 다시 가입하면 그때의 판매 가격(현재 정가 월 ${won(d.listp)})이 적용돼요.`;
   return KAKAO_CSS + '<div class="kk">' + SB.replace('class="sb"', 'class="sb" style="background:#B2C7D9"') + '<div class="tt">니짐내짐</div>'
     + `<div class="msg"><div class="pf">${SYM}</div><div><div class="nm">니짐내짐</div><div style="display:flex"><div class="bub"><div class="ah">알림톡 도착</div><div class="bd">${body}</div>`
-    + '<div class="bts"><div class="kb eqk" data-act="kakaoWithdraw">해지 취소하기</div><div class="kb eqk" data-act="kakaoView">내 멤버십 보기</div></div></div><span class="time">오전 10:00</span></div></div></div><div class="end"></div></div>';
+    + '<div class="bts"><div class="kb eqk" data-act="kakaoWithdraw">구독해지 철회하기</div><div class="kb eqk" data-act="kakaoView">내 멤버십 보기</div></div></div><span class="time">오전 10:00</span></div></div></div><div class="end"></div></div>';
 }
 
 // ───────── 사유 → 제안 결정 (README_SPEC 5번 표와 같은 규칙) ─────────

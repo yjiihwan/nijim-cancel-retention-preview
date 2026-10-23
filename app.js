@@ -12,10 +12,12 @@ const PRESETS = {
 const S = {
   mode: 'app', data: 'base', visits0: false, feature: true,
   preset: 'b1', cfg: null, draft: null, ui: { pvI: 0, savedAt: SAVED0 },
-  screen: 'A0', reason: null, etc: '', kind: null, scrollTop: 330, toast: true,
+  screen: 'A0', reason: null, etc: '', kind: null, scrollTop: 0, toast: true,
   sub: null, attempts: [], log: '',
 };
-const D = () => { const d = S.data === 'stress' ? STRESS : BASE; return S.visits0 ? { ...d, visits: 0 } : d; };
+// two/zero: 기타 서비스 2개·0개(시안 X_A0_기타서비스2개·0개와 같은 값, 캡처 전용)
+const TWO = { ...BASE, others: [...BASE.others, { name: '운동복 대여', period: '2026.10.15 ~ 2026.11.14', extra: null, fee: 10000, due: true }] }, ZERO = { ...BASE, others: [] };
+const D = () => { const d = S.data === 'stress' ? STRESS : S.data === 'two' ? TWO : S.data === 'zero' ? ZERO : BASE; return S.visits0 ? { ...d, visits: 0 } : d; };
 const discNum = (raw) => Number(String(raw).replace(/[^0-9]/g, '') || 0);
 function mkCfg(p) {
   const d = D();
@@ -24,7 +26,7 @@ function mkCfg(p) {
 }
 const clone = (c) => ({ ...c, branches: c.branches.map((b) => [...b]) });
 const newSub = () => ({ status: 'active', discountPending: 0, skipPending: false, couponIssued: null });
-function reset() { S.sub = newSub(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 330; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
+function reset() { S.sub = newSub(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
 const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', move: 'branch', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
 const cur = () => S.attempts[S.attempts.length - 1];
 
@@ -35,19 +37,21 @@ function render() {
   const d = D(), c = S.cfg;
   let h;
   switch (S.screen) {
-    case 'A0': h = A0(d); break;
+    case 'A0': h = A0(d, LONG); break;
     case 'A1': h = A1(d, S.reason, S.etc, S.reason && !resolveOffer(S.reason, c, S.sub)); break;
     case 'A2': h = A2(d, S.kind, S.reason, c, S.etc.trim()); break;
     case 'A3': h = A3(d, S.kind, c); break;
     case 'A4': h = A4(d); break;
-    case 'A5': h = A5(d); break;
+    case 'A5': h = A5(d, LONG); break;
     case 'A6': h = A6(d); break;
     case 'K1': h = K1(d); break;
   }
   const app = $('#app'); app.innerHTML = h;
+  app.classList.toggle('long', LONG && (S.screen === 'A0' || S.screen === 'A5'));
   app.dataset.screen = S.screen; app.dataset.kind = S.kind || '';
   const sc = app.querySelector('.scr');
-  if (sc) sc.scrollTop = S.screen === 'A0' ? S.scrollTop : 0;
+  // 흐름에서 돌아오면 «이용중인 서비스»가 보이게(시안 A6와 같은 위치), 처음 열 때는 맨 위(실제 앱 그대로)
+  if (sc) sc.scrollTop = /^A[056]$/.test(S.screen) && (S.screen !== 'A0' || S.scrollTop === 'svc') ? $('#svc').offsetTop - 20 : 0;
   const ta = $('#etc');
   if (ta) { autosize(ta); ta.addEventListener('input', () => { S.etc = ta.value; $('#etcn').textContent = [...ta.value].length; autosize(ta); }); }
   if (S.screen === 'A6' && !S.toast) app.querySelector('.toast')?.classList.add('gone');
@@ -75,7 +79,7 @@ function onDisc(e) {
 }
 function stateText() {
   const s = S.sub, d = D(), a = cur();
-  const next = s.status === 'reserved' ? `없음 (${d.next_md} 종료)` : s.skipPending ? `${d.next_md} 건너뜀 → ${d.resume} ${won(d.price)}` : `${d.next_md} ${won(d.price - s.discountPending)}`;
+  const next = s.status === 'reserved' ? `없음 (${d.next_md} 해지)` : s.skipPending ? `${d.next_md} 건너뜀 → ${d.resume} ${won(d.price)}` : `${d.next_md} ${won(d.price - s.discountPending)}`;
   const lines = [
     `subscription.status        = ${s.status}`,
     `cancel_effective_date      = ${s.status === 'reserved' ? '2026-11-15' : 'null'}`,
@@ -108,7 +112,7 @@ const ACT = {
     if (!S.feature) { S.log = '기능 꺼짐 → 지금 앱의 해지 동작 그대로 실행(이 프로토타입엔 그 화면이 없어요).'; return render(); }
     S.reason = null; S.etc = ''; S.kind = null; S.log = ''; go('A1');
   },
-  back() { if (S.screen === 'A2') return go('A1'); S.scrollTop = 330; go('A0'); },
+  back() { if (S.screen === 'A2') return go('A1'); S.scrollTop = 'svc'; go('A0'); },
   reason(el) { S.reason = el.dataset.r; render(); if (S.reason === 'etc') $('#etc')?.focus(); },
   next() {
     S.kind = resolveOffer(S.reason, S.cfg, S.sub);
@@ -130,16 +134,18 @@ const ACT = {
     S.log = { price: '다음 결제 1회 할인 예약', skip_off: '다음 결제 1회 할인 예약', skip: '다음 결제 1회 건너뛰기 예약', move: '지점 안내로 이동(구독 그대로)', pt: '쿠폰함에 체험권 발급', inbody: '쿠폰함에 측정권 발급', keep: '구독 그대로' }[k];
     go('A3');
   },
-  toMembership() { S.scrollTop = 330; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
+  toMembership() { S.scrollTop = 'svc'; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
   withdraw(via = 'app') {
-    if (S.sub.status !== 'reserved') { S.log = '이미 철회됐어요 — 변화 없음(두 번 눌러도 안전).'; S.scrollTop = 0; return go('A0'); }
+    if (S.sub.status !== 'reserved') { S.log = '이미 철회됐어요 — 변화 없음(두 번 눌러도 안전).'; S.scrollTop = 'svc'; return go('A0'); }
     S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = via; }
     S.toast = true; S.log = via === 'alimtalk' ? '알림톡 링크 → 앱 로그인 확인 후 철회(링크를 연 것만으로는 철회 안 됨).' : '해지예약 철회. 다음 결제 그대로.';
     go('A6'); setTimeout(() => { if (S.screen === 'A6' && !qs.get('shot')) { S.toast = false; $('.toast')?.classList.add('gone'); } }, 3500);
   },
+  otherCancel(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지] → 지금 앱 동작 그대로(회유 흐름 없음, 이 프로토타입엔 그 화면이 없어요).`; render(); },
+  otherWithdraw(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지 철회] → 지금 앱 동작 그대로.`; render(); },
   hideToast() { S.toast = false; $('.toast')?.classList.add('gone'); },
   kakaoWithdraw() { ACT.withdraw('alimtalk'); },
-  kakaoView() { S.scrollTop = 330; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
+  kakaoView() { S.scrollTop = 'svc'; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
 };
 
 // ───────── 관리자 동작 ─────────
@@ -165,7 +171,7 @@ const PANEL = {
   mode(v) { S.mode = v; render(); },
   data(v) { S.data = v; S.cfg = mkCfg(S.preset || 'b1'); S.draft = clone(S.cfg); render(); },
   vis(v) { S.visits0 = v === '0'; render(); },
-  feat(v) { S.feature = v === '1'; S.log = S.feature ? '' : '기능 꺼짐: [구독 해지]를 누르면 지금 앱 동작 그대로(회유 화면 없음).'; render(); },
+  feat(v) { S.feature = v === '1'; S.log = S.feature ? '' : '기능 꺼짐: [구독해지]를 누르면 지금 앱 동작 그대로(회유 화면 없음).'; render(); },
   preset(v) { S.preset = v; S.cfg = mkCfg(v); S.draft = clone(S.cfg); S.ui.savedAt = SAVED0; render(); },
   reason(v) {
     if (S.sub.status !== 'active') reset();
@@ -180,7 +186,7 @@ const PANEL = {
       S.log = '11월 12일 10:00 — 종료 3일 전 알림톡 발송'; S.mode = 'app'; return go('K1');
     }
     if (v === 'pay') {
-      if (s.status === 'reserved') { s.status = 'ended'; S.log = `${d.next_md} — 결제하지 않고 구독 종료(현행 만료 처리, 이번 범위 밖)`; S.scrollTop = 330; S.screen = 'A0'; return render(); }
+      if (s.status === 'reserved') { s.status = 'ended'; S.log = `${d.next_md} — 결제하지 않고 구독 종료(현행 만료 처리, 이번 범위 밖)`; S.scrollTop = 0; S.screen = 'A0'; return render(); }
       if (s.status === 'ended') { S.log = '이미 종료된 구독이에요.'; return render(); }
       if (s.skipPending) { s.skipPending = false; S.log = `${d.next_md} — 결제 건너뜀(쉬는 기간 입장 불가) → ${d.resume}에 ${won(d.price)} 결제 재개`; }
       else if (s.discountPending) { S.log = `${d.next_md} — ${won(d.price - s.discountPending)} 결제(1회 할인 ${won(s.discountPending)} 사용) → 그다음 ${won(d.price)}`; s.discountPending = 0; }
@@ -202,7 +208,7 @@ document.addEventListener('click', (e) => {
 
 // ───────── 시작: ?go=시안 화면 이름(검사·캡처용) ─────────
 const GO = {
-  A0: () => {}, A1: () => { PANEL.reason('price'); S.screen = 'A1'; S.attempts = []; },
+  A0: () => {}, 'A0-2': () => { S.data = 'two'; }, 'A0-0': () => { S.data = 'zero'; }, A1: () => { PANEL.reason('price'); S.screen = 'A1'; S.attempts = []; },
   A1b: () => { S.screen = 'A1'; S.reason = 'etc'; S.etc = D().etc_text; },
   A1c: () => { PANEL.preset('off'); S.screen = 'A1'; S.reason = 'busy'; },
   'A2-1': () => PANEL.reason('price'),
@@ -223,6 +229,7 @@ const GO = {
   B4: () => { PANEL.preset('off'); S.mode = 'admin'; },
 };
 if (qs.get('shot') === '1') document.body.classList.add('shot');
+const LONG = qs.get('long') === '1'; // 캡처 비교용: A0·A5를 시안처럼 세로로 긴 전체 화면으로
 S.data = qs.get('d') === 'stress' ? 'stress' : 'base';
 S.cfg = mkCfg('b1'); S.draft = clone(S.cfg); reset();
 const g = qs.get('go');

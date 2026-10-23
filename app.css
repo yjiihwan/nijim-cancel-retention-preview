@@ -125,3 +125,47 @@ body{font-family:"Pretendard","Apple SD Gothic Neo",sans-serif;color:var(--ink);
 /* 토스트 */
 .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#202024;color:#fff;border-radius:12px;padding:13px 16px;font-size:14px;line-height:20px;z-index:6;display:flex;gap:10px;align-items:flex-start}
 .toast .s{color:#C9C9D1;font-size:13px}
+
+/* ───── v2(10-23): 실제 앱 «내 멤버십» 화면 재현(형 캡처 _ref/real_membership_screen_20261023.jpg) — 구성·색·버튼 톤 임의 변경 금지 ───── */
+.phone.long{height:auto;overflow:hidden}
+.rm-cards{position:relative;height:198px;margin-top:2px}
+.rm-card{position:absolute;left:45px;top:4px;width:300px;height:188px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.11);padding:13px 14px 14px;display:flex;flex-direction:column;justify-content:space-between;color:#222}
+.rm-card.rm-peek{left:368px}
+.rm-card .cn{display:flex;align-items:flex-start;gap:6px}
+.rm-card .cn span{font-size:18px;font-weight:700;line-height:25px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+.rm-card .cn svg{flex:none;margin-top:3px}
+.rm-card .ty{font-size:16px;font-weight:500;line-height:23px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-card .dl{font-size:16px;font-weight:500;line-height:30px}
+.rm-card .dl b{font-size:24px;font-weight:700;margin-right:4px}
+.rm-card .dy{font-size:13px;color:#555;line-height:19px}
+.rm-enters{position:relative;height:62px;margin-top:10px}
+.rm-enter{position:absolute;left:45px;top:0;width:300px;height:62px;border-radius:10px;background:#F5F5F5;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:400;color:#333}
+.rm-enter.rm-peek{left:368px}
+.rm-open{text-align:center;font-size:15px;color:#222;margin-top:26px;line-height:22px}
+.rm-band{height:8px;background:#F5F5F5;margin-top:26px}
+.rm-sect{text-align:center;font-size:18px;font-weight:700;line-height:26px;color:#222;margin:26px 0 16px}
+.rm-box{margin:0 16px 12px;background:#F5F5F5;border-radius:12px;padding:18px 20px 20px;color:#222}
+.rm-box .t{font-size:19px;font-weight:700;line-height:27px}
+.rm-box .nm{font-size:14px;font-weight:700;line-height:20px;margin-top:10px}
+.rm-box .ln{font-size:14px;line-height:20px;margin-top:6px;color:#333}
+.rm-cbs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px}
+.rm-cb{height:36px;border-radius:4px;background:#fff;border:1.5px solid;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px;font-weight:600;white-space:nowrap}
+.rm-cb.b{border-color:#3D8BF2;color:#2577E8}.rm-cb.g{border-color:#6CC072;color:#3B9F44}.rm-cb.k{border-color:#F3D41A;color:#3C1E1E}
+.rm-sv+.rm-sv{border-top:1px solid #E4E4E4;margin-top:16px;padding-top:16px}
+.rm-acts{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:12px}
+.rm-btn{width:110px;height:26px;border-radius:4px;background:#CFCFCF;color:#fff;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;white-space:nowrap;flex:none}
+.rm-btn.grn{background:#00B081}
+.rm-due{font-size:14px;color:#F2433A;line-height:20px}
+.rm-add{margin:4px 16px 12px;height:52px;border-radius:10px;background:#FE2167;color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.rm-pay{display:flex;gap:8px;margin-top:8px}
+.rm-cc{flex:1;min-width:0;background:#fff;border:1px solid #E3E3E3;border-radius:6px;padding:9px 12px 10px}
+.rm-cc .a{font-size:14px;font-weight:700;line-height:20px}
+.rm-cc .b{font-size:12px;color:#9A9A9A;line-height:17px}
+.rm-cc .c{font-size:12px;color:#9A9A9A;line-height:17px;margin-top:12px}
+.rm-chg{width:72px;flex:none;background:#313131;color:#fff;border-radius:6px;font-size:14px;line-height:20px;text-align:center;display:flex;align-items:center;justify-content:center}
+.rm-tab{margin-top:18px;border-top:1px solid #EAEAEA;border-radius:16px 16px 0 0;height:88px;display:flex;padding-top:9px;background:#fff;position:relative}
+.rm-tab .it{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:#9A9A9A}
+.rm-tab .it.on{color:#FE2167}
+.rm-tab .hi{position:absolute;left:127px;bottom:8px;width:136px;height:5px;border-radius:3px;background:#111}
+.rm-view{position:absolute;left:0;right:0;top:103px;bottom:88px;overflow:hidden}
+.phone .rm-tab.fix{position:absolute;left:0;right:0;bottom:0;margin:0;z-index:5}
