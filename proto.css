@@ -1,0 +1,43 @@
+/* 프로토타입 전용(시안 CSS에 없는 것): 본문 스크롤 틀·입력칸·조작판. 앱·관리자 화면 모양은 app.css·admin.css 그대로. */
+.scr{position:absolute;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.scr::-webkit-scrollbar{display:none}
+.phone [data-act]{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.phone .btn.dis{cursor:not-allowed}
+.ta textarea{display:block;width:100%;border:0;outline:0;resize:none;overflow:hidden;background:transparent;font:inherit;font-size:14px;line-height:20px;color:var(--ink);letter-spacing:-0.2px;padding:0;min-height:20px}
+.ta textarea::placeholder{color:var(--text3)}
+.toast{transition:opacity .3s}
+.toast.gone{opacity:0;pointer-events:none}
+.pvbody .phone{pointer-events:none}
+.adm .in.num input{width:100%;border:0;outline:0;background:transparent;text-align:right;font:inherit;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+.adm [data-act]{cursor:pointer;user-select:none}
+.adm .b.dis{cursor:not-allowed}
+
+body.proto{background:#EDEDF0;min-height:100vh}
+body.proto .phone{margin:0 auto;box-shadow:0 0 0 1px #D8D8DE}
+.demo{max-width:390px;margin:0 auto;background:#26262B;color:#fff;padding:10px 12px 12px;font-size:12px;font-family:Pretendard,"Apple SD Gothic Neo",sans-serif;letter-spacing:-0.2px}
+.demo-h{font-weight:700;margin-bottom:8px;font-size:13px}.demo-h span{font-weight:400;color:#A9A9B2}
+.demo .lb{color:#A9A9B2;margin:8px 0 4px;font-weight:600}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 0;min-width:0;height:30px;overflow:hidden;text-overflow:ellipsis;border-radius:8px;border:1px solid #55555E;background:transparent;color:#fff;font:600 12px Pretendard,sans-serif;cursor:pointer;padding:0 6px;white-space:nowrap}
+.seg.r button{flex:1 1 calc(25% - 6px)}
+.seg button.on{background:#fff;color:#202024;border-color:#fff}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+.state{margin-top:10px;background:#18181C;border-radius:8px;padding:8px 10px;font:11px/16px ui-monospace,Menlo,monospace;color:#C9F2DD;white-space:pre-wrap;word-break:break-all}
+.log{margin-top:6px;color:#FFD48A;font-size:12px;line-height:17px;min-height:17px}
+body.shot .demo{display:none!important}
+body.shot{background:#fff}
+body.shot .phone{box-shadow:none;margin:0}
+body.mode-admin .phone{display:none}
+body.mode-app .adm{display:none}
+.adm{margin:0 auto}
+@media (min-width:900px){
+  body.mode-app .demo{position:fixed;left:calc(50% - 195px - 320px);top:24px;width:300px;border-radius:12px;padding:14px;max-height:calc(100vh - 48px);overflow:auto}
+  body.mode-app{padding-top:24px}
+  body.mode-admin .demo{max-width:none;display:flex;flex-wrap:wrap;gap:4px 18px;align-items:flex-end}
+  body.mode-admin .demo > div{min-width:200px}
+  body.mode-admin .demo .state{display:none}
+}
+body.mode-admin .demo .app-only{display:none}
+@media (min-width:900px){body.mode-admin .demo .seg.r button{flex:0 0 auto}}
+.seg.h button{flex:1 1 calc(50% - 6px)}
+@media (min-width:900px){body.mode-admin .demo .seg.h button{flex:0 0 auto}}

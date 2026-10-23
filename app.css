@@ -1,0 +1,127 @@
+/* 니짐내짐 구독 «해지예약 회유» B안 — 회원 앱 390×844. 토큰 = nijim colors.md v2 + 결제창 v1(10-21) 실측값.
+   원장 준수: 3D·배경효과·그라데이션 없음(입장하기 아이콘은 현행 앱 그대로), 폰트 왜곡 없음, 박스 2겹 이하, 굵은 글자는 제목·금액·버튼만. */
+:root{
+  --rose:#FE2167; --rose-tint:#FFE6EE; --rose-text:#D4004E;
+  --ink:#202024; --ink2:#16161C; --text2:#6B6B73; --text3:#9A9AA3;
+  --line:#ECECEF; --line2:#E3E3E7; --fill:#F7F8FA; --fill2:#F5F5F5;
+  --event:#E5342B; --sub:#1BB47C; --sub-tint:#E8F7F0; --err:#E5342B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff}
+body{font-family:"Pretendard","Apple SD Gothic Neo",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;letter-spacing:-0.2px;word-break:keep-all;overflow-wrap:anywhere}
+.phone{width:390px;height:844px;position:relative;background:#fff;overflow:hidden}
+.sb{height:47px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 8px 30px;font-size:16px;font-weight:600;letter-spacing:0;background:#fff;position:relative;z-index:3}
+.sb .ic{display:flex;gap:6px;align-items:center}
+.hdr{height:44px;display:flex;align-items:center;justify-content:center;position:relative;font-size:17px;font-weight:700;background:#fff;z-index:3}
+.hdr .back{position:absolute;left:8px;top:2px;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
+.body{padding:0 20px}
+.eyebrow{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--text2);line-height:18px;margin-top:14px}
+.eyebrow b{color:var(--ink);font-weight:600}
+.quote{margin-top:8px;padding:10px 12px;border-left:3px solid var(--line2);font-size:13px;line-height:19px;color:var(--text2)}
+.h1{font-size:23px;font-weight:800;line-height:31px;letter-spacing:-0.5px;margin-top:10px}
+.h1 em{font-style:normal;color:var(--rose)}
+.p{font-size:15px;line-height:22px;color:var(--text2);margin-top:8px}
+/* 제안 내용 상자 (1겹, 테두리·그림자 없음) */
+.box{margin-top:18px;background:var(--fill);border-radius:12px;padding:6px 16px}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid #ECEDF0;font-size:14px;line-height:20px}
+.kv:first-child{border-top:0}
+.kv .k{color:var(--text2);flex:none}
+.kv .v{font-weight:600;text-align:right;min-width:0}
+.kv .v s{color:var(--text3);font-weight:400;margin-right:6px}
+.kv .v .big{font-size:17px;font-weight:800;color:var(--ink)}
+.box .note{font-size:12px;line-height:17px;color:var(--text3);padding:0 0 10px}
+.br{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid #ECEDF0}
+.br:first-child{border-top:0}
+.br .pin{width:28px;height:28px;border-radius:8px;background:#fff;flex:none;display:flex;align-items:center;justify-content:center}
+.br .n{font-size:15px;font-weight:600;line-height:21px}
+.br .a{font-size:13px;color:var(--text2);line-height:18px;margin-top:1px}
+/* «해지하면 달라져요» */
+.lt{font-size:16px;font-weight:700;line-height:22px;margin-top:26px}
+.cmp{display:flex;gap:8px;margin-top:10px}
+.cmp .c{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:12px 12px 11px}
+.cmp .c .l{font-size:12px;font-weight:600;color:var(--text2);line-height:16px}
+.cmp .c .l.ev{color:var(--event)}
+.cmp .c .pr{font-size:19px;font-weight:800;line-height:26px;margin-top:4px;letter-spacing:-0.4px;white-space:nowrap}
+.cmp .c .pr small{font-size:13px;font-weight:600;margin-right:2px}
+.cmp .c .d{font-size:12px;color:var(--text3);line-height:16px;margin-top:2px}
+.cmp .c.keep{border-color:#FFC2D6}
+.facts{margin-top:4px}
+.fact{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:14px;line-height:20px;color:var(--ink)}
+.fact .i{width:28px;height:28px;border-radius:50%;background:var(--fill);flex:none;display:flex;align-items:center;justify-content:center}
+.fact b{font-weight:700}
+.fact .s{color:var(--text3);font-size:12px;display:block;line-height:16px}
+/* 하단 두 버튼 — 같은 크기·같은 무게(둘 다 채움, 흰 글자 16/700). 회색·작은 글씨·텍스트 링크 금지 */
+.bar{position:absolute;left:0;right:0;bottom:0;background:#fff;padding:12px 20px 34px;border-top:1px solid var(--line);z-index:4}
+.bar .two{display:flex;gap:8px}
+.bar .eq{flex:1 1 0;min-width:0;height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;text-align:center;line-height:20px;padding:0 6px}
+.bar .eq.go{background:var(--ink)}
+.bar .eq.keep{background:var(--rose)}
+.bar .hint{font-size:12px;line-height:17px;color:var(--text2);text-align:center;margin-bottom:10px}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:10px;font-size:16px;font-weight:700;width:100%}
+.btn.pri{background:var(--rose);color:#fff}
+.btn.ink{background:var(--ink);color:#fff}
+.btn.line{background:#fff;border:1px solid var(--line2);color:var(--ink)}
+.btn.dis{background:#F0F0F3;color:#B8B8C0}
+/* 사유 선택 */
+.info{margin-top:16px;background:var(--fill);border-radius:12px;padding:12px 14px;font-size:13px;line-height:19px;color:var(--text2)}
+.info b{color:var(--ink);font-weight:600}
+.rlist{margin-top:14px}
+.ro{display:flex;align-items:center;gap:12px;height:50px;border-bottom:1px solid var(--line);font-size:16px;font-weight:500}
+.ro .rd{width:22px;height:22px;border-radius:50%;border:1.5px solid #C9C9D1;flex:none;display:flex;align-items:center;justify-content:center}
+.ro.on{font-weight:700}
+.ro.on .rd{border:6.5px solid var(--rose)}
+.ta{margin:10px 0 0 34px;border:1.5px solid var(--ink);border-radius:10px;padding:10px 12px 8px;font-size:14px;line-height:20px;color:var(--ink);min-height:64px}
+.ta .cnt{text-align:right;font-size:12px;color:var(--text3);margin-top:4px}
+/* 결과 화면 */
+.done{padding:40px 20px 0}
+.done .ok{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fill)}
+.done .h1{margin-top:18px}
+.done .what{font-size:14px;color:var(--text2);margin-top:6px;line-height:20px}
+.stack{position:absolute;left:20px;right:20px;bottom:34px;display:flex;flex-direction:column;gap:8px}
+/* 현행 «내 멤버십» 재현 (norder_member_link_20260929 app.css 그대로) */
+.mm-hdr{height:56px;font-size:18px;font-weight:700;color:#111}
+.mm{position:relative;width:390px}
+.mm-card,.mm-peek{position:absolute;border-radius:14px;background:#FAFAFA;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.mm-card{left:49px;top:1px;width:293px;height:184px;padding:10px 13px 0;color:#111}
+.mm-peek{left:-262px;top:5px;width:293px;height:175px}
+.mm-card .cn{font-size:18px;font-weight:700;line-height:26px}
+.mm-card .ty{margin-top:34px;font-size:17px;font-weight:700;line-height:24px}
+.mm-card .pd{font-size:17px;font-weight:700;line-height:24px}
+.mm-card .dl{font-size:15px;font-weight:700;line-height:30px}
+.mm-card .dl b{font-size:24px;font-weight:700;letter-spacing:-0.3px}
+.mm-card .dy{font-size:15px;font-weight:600;line-height:20px}
+.mm-enter,.mm-enter-peek{position:absolute;top:197px;height:60px;border-radius:12px;background:#F5F5F5}
+.mm-enter{left:53px;width:288px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:18px;font-weight:500;color:#3C3C3C}
+.mm-enter-peek{left:-247px;width:288px}
+.mm-ok{position:absolute;left:0;right:0;top:293px;text-align:center;font-size:16px;font-weight:700;line-height:24px;color:#111}
+.mm-pts{position:absolute;left:44px;top:341px;width:302px;height:42px;border-radius:8px;background:#F3F3F3;display:flex;align-items:center;padding:0 15px 0 14px;color:#111}
+.mm-pts .coin{width:16px;height:16px;border-radius:50%;background:#FFC83D;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-right:8px;font-family:Helvetica,Arial,sans-serif}
+.mm-pts .l{font-size:15px;font-weight:400;flex:1}
+.mm-pts .a{font-size:20px;font-weight:700}
+.mm-band{position:absolute;left:0;right:0;top:409px;height:10px;background:#F5F5F5}
+.mm-sect{position:absolute;left:17px;top:439px;font-size:18px;font-weight:700;line-height:26px;color:#111}
+.mm-detail{position:absolute;left:17px;width:356px;top:478px;border-radius:12px;background:#F5F5F5;padding:19px 20px 20px;color:#111}
+.mm-detail .t{font-size:18px;font-weight:700;line-height:26px;display:flex;align-items:center;gap:8px}
+.mm-detail .k{font-size:14px;font-weight:700;line-height:20px;margin-top:11px}
+.mm-detail .v{font-size:14px;font-weight:400;line-height:20px;margin-top:11px}
+.mm-detail .k:first-of-type{margin-top:15px}
+.tab{position:absolute;left:24px;right:24px;bottom:16px;height:64px;border-radius:32px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.10);display:flex;align-items:center;padding:0 6px;z-index:5}
+.tab .it{flex:1;height:52px;border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:500;color:#111}
+.tab .it.on{background:#ECECEF;color:var(--rose)}
+.home-ind{position:absolute;left:127px;bottom:8px;width:136px;height:5px;border-radius:3px;background:#111;z-index:5}
+/* 신규: 구독 정보 블록(상세정보 안, 센터정보 아래) */
+.subbadge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px 0 6px;border-radius:11px;background:var(--sub);color:#fff;font-size:12px;font-weight:700}
+.mm-sub .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:13px;font-size:14px;line-height:20px}
+.mm-sub .row .k{font-weight:700;margin:0}
+.mm-sub .row .v{margin:0;text-align:right}
+.mm-sub .row .v .ev{color:var(--event);font-size:12px;font-weight:600;margin-left:4px}
+.mm-sub .cbtn{margin-top:16px;height:44px;border-radius:10px;background:#fff;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--ink)}
+/* 신규: 해지예약 상태 띠 (카드 위, 내 멤버십 화면의 유일한 추가 요소) */
+.rsv{margin:2px 16px 14px;border-radius:12px;background:#FFF4E5;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:10px}
+.rsv .tx{flex:1;min-width:0}
+.rsv .t1{font-size:15px;font-weight:700;line-height:21px;color:var(--ink)}
+.rsv .t2{font-size:12px;line-height:17px;color:#7A5A2E;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rsv .cbtn{flex:none;height:40px;padding:0 14px;border-radius:9px;background:var(--rose);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center}
+/* 토스트 */
+.toast{position:absolute;left:16px;right:16px;bottom:96px;background:#202024;color:#fff;border-radius:12px;padding:13px 16px;font-size:14px;line-height:20px;z-index:6;display:flex;gap:10px;align-items:flex-start}
+.toast .s{color:#C9C9D1;font-size:13px}

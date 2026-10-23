@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>니짐내짐 구독 «해지예약 회유» B안 프로토타입</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="proto.css">
+</head>
+<body class="proto mode-app">
+<div class="demo" id="demo">
+  <div class="demo-h">프로토타입 조작판 <span>(실제 앱 화면 아님 · 더미 데이터)</span></div>
+  <div><div class="lb">보는 화면</div>
+  <div class="seg" id="p-mode" data-g="mode"><button data-v="app">회원 앱</button><button data-v="admin">센터 관리자 설정</button></div></div>
+  <div class="app-only"><div class="lb">해지 이유 바로 보기 (고르면 그 이유의 제안 화면)</div>
+  <div class="seg r" id="p-reason" data-g="reason"><button data-v="price">가격 부담</button><button data-v="busy">바빠서</button><button data-v="hurt">다쳐서</button><button data-v="trip">여행·출장</button><button data-v="move">이사</button><button data-v="effect">효과 없음</button><button data-v="etc">기타</button></div></div>
+  <div><div class="lb">센터 설정 (기본=쉬어가기 끔·PT · 관리자 화면에서 바꾸고 [저장]해도 반영)</div>
+  <div class="seg h" id="p-preset" data-g="preset"><button data-v="b1">기본(B1)</button><button data-v="all">모두 켬·PT</button><button data-v="inbody">모두 켬·인바디</button><button data-v="off">모두 끔</button></div></div>
+  <div class="app-only"><div class="lb">날짜 이동 (오늘 10/23 → 11/12 알림톡 → 11/15 결제일)</div>
+  <div class="seg" id="p-time" data-g="time"><button data-v="k1">3일 전 알림톡</button><button data-v="pay">결제일 11/15</button><button data-v="reset">처음부터</button></div></div>
+  <div><div class="lb">값</div>
+  <div class="seg" id="p-data" data-g="data"><button data-v="base">보통 값</button><button data-v="stress">긴 값·큰 금액</button></div>
+  <div class="seg app-only" id="p-vis" data-g="vis" style="margin-top:6px"><button data-v="12">이번 달 입장 12회</button><button data-v="0">입장 0회</button></div></div>
+  <div class="app-only"><div class="lb">기능 스위치 (끄면 지금 앱 해지 동작 그대로)</div>
+  <div class="seg" id="p-feat" data-g="feat"><button data-v="1">켬</button><button data-v="0">끔</button></div></div>
+  <div class="app-only"><div class="log" id="p-log"></div><div class="state" id="p-state"></div></div>
+</div>
+<div class="phone" id="app"></div>
+<div class="adm" id="adm"></div>
+<script src="screens.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
