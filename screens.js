@@ -1,5 +1,5 @@
 // 니짐내짐 구독 «해지예약 회유» B안 — 화면 그리기. 시안(_src/build.py·admin.py) 마크업을 그대로 옮겼다(클래스·문구·숫자 동일).
-// v1.3(10-23): 시안 v3 «시크릿 제안» A안 — A2-1(+A2-2b)·A2-2 문안, A3 «시크릿 혜택이/쉬어가기 찬스가 적용됐어요», 제안은 회원당 1번만(resolveOffer 4번째 인자).
+// v1.3(10-23): 시안 v3 «시크릿 제안» A안 — A2-1(+A2-2b)·A2-2 문안, A3 «시크릿 혜택이/쉬어가기 찬스가 적용됐어요», 제안은 회원 ID + 상품 ID마다 1번(resolveOffer 4번째 인자) · 센터 기본 + 상품별 따로 설정(effCfg).
 // v1.2(10-23): K1 알림톡 = 카카오 정보성 검수 수정본(금액·정가·재가입 문장 삭제), 알림톡 [구독해지 철회하기] → K2 철회 페이지(결제 기능 없음).
 // v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
@@ -29,6 +29,30 @@ const STRESS = {
 };
 // 형 예시 긴 값(시안 v3 LONGNAME): 긴 이름 + 긴 지점명, 금액은 보통
 const LONGNAME = { ...BASE, uname: '남궁윤재현', center: '엔짐 영등포타임스퀘어점' };
+// v1.3 구독 상품 9개(시안 v3/admin_settings P와 같은 값). 1번째 = 회원의 지금 상품(d.product), 3번째(PT 패키지) = 구독 2개 회원의 두 번째 상품.
+const BIG = (d) => d.price >= 1000000; // «긴 값·큰 금액»이면 두 번째 상품도 긴 이름·큰 금액
+function products(d) {
+  return [
+    { id: 'p_health', n: d.product, p: d.price, ev: true },
+    { id: 'p_hgx', n: '헬스+GX 구독멤버십', p: 59000 },
+    { id: 'p_pt', n: BIG(d) ? 'PT 1:1 프리미엄 48회 + 헬스 12개월 패키지(바디프로필 촬영·식단 코칭 포함)' : 'PT 1:1 프리미엄 24회 + 헬스 6개월 패키지', p: BIG(d) ? 2490000 : 390000 },
+    { id: 'p_pil', n: '필라테스 그룹 주 2회 구독멤버십', p: 129000 },
+    { id: 'p_stu', n: '학생 헬스 구독멤버십(만 24세 이하)', p: 33000 },
+    { id: 'p_dawn', n: '새벽 얼리버드 헬스 구독멤버십(06~09시)', p: 35000 },
+    { id: 'p_couple', n: '커플 헬스 구독멤버십(2인)', p: 79000 },
+    { id: 'p_locker', n: '개인락커 포함 헬스 구독멤버십', p: 49000 },
+    { id: 'p_yoga', n: '요가·필라테스 무제한 구독멤버십', p: 159000, added: '10월 22일 추가 · 자동으로 센터 기본 적용' },
+  ];
+}
+const ownDefaults = (d) => ({ p_pt: { price_on: true, disc: BIG(d) ? 1000000 : 100000, skip_on: true }, p_pil: { price_on: true, disc: 20000, skip_on: false }, p_locker: { price_on: false, disc: 0, skip_on: true } });
+// 따로 설정한 상품은 할인(켜기·금액)·쉬어가기(켜기)만 덮어쓴다. 이사·효과·기타·5번은 언제나 센터 기본(README_SPEC 15번).
+const effCfg = (center, own) => own ? { ...center, price_on: own.price_on, disc: own.disc, discRaw: own.discRaw, skip_on: own.skip_on } : center;
+// 회원 화면용 상품 데이터: 회원·센터·날짜는 그대로, 상품 이름·가격·이용횟수만 그 상품 것
+function prodData(d, pid) {
+  if (pid === 'p_health') return d;
+  const p = products(d).find((x) => x.id === pid);
+  return { ...d, pid, product: p.n, ty: pid === 'p_pt' ? 'PT+헬스' : d.ty, price: p.p, listp: p.p, daily: pid === 'p_pt' ? '하루 1회 이용가능(0/1)' : d.daily };
+}
 const REASONS = [['price', '가격이 부담돼요'], ['busy', '바빠서 갈 시간이 없어요'], ['hurt', '다쳐서 쉬어야 해요'], ['trip', '여행·출장을 가요'],
   ['move', '이사를 가요'], ['effect', '운동 효과가 없어요'], ['etc', '기타(직접 입력)']];
 const RL = Object.fromEntries(REASONS);
@@ -92,10 +116,12 @@ function rmOtherServices(d) {
   }).join('');
   return `<div class="rm-box"><div class="t">이용중인 기타 서비스</div>${items}</div>`;
 }
-function rmContent(d, due) {
+function rmContent(d, due, pk) {
   const card = `<div class="rm-card"><div class="cn"><span>${esc(d.center)}</span>${CHEV}</div>`
     + `<div><div class="ty">${esc(d.ty)}</div><div class="ty">구독멤버십</div><div class="dl"><b>${d.days_left}</b>일 남음</div><div class="dy">${d.daily}</div></div></div>`;
-  const peek = `<div class="rm-card rm-peek"><div class="cn"><span>${d.peek}</span></div><div><div class="ty">헬스</div><div class="ty">3개월</div><div class="dl"><b>51</b>일 남음</div><div class="dy">하루 1회</div></div></div>`;
+  // pk: 구독 2개 회원이면 옆 카드 = 다른 구독 상품(누르면 그 상품으로 바뀜). 없으면 지금 앱 캡처 그대로.
+  const peek = pk ? `<div class="rm-card rm-peek" data-act="switchSub" data-k="peek"><div class="cn"><span>${esc(pk.center)}</span></div><div><div class="ty">${esc(pk.ty)}</div><div class="ty">구독멤버십</div><div class="dl"><b>${pk.days_left}</b>일 남음</div><div class="dy">${esc(pk.daily)}</div></div></div>`
+    : `<div class="rm-card rm-peek"><div class="cn"><span>${d.peek}</span></div><div><div class="ty">헬스</div><div class="ty">3개월</div><div class="dl"><b>51</b>일 남음</div><div class="dy">하루 1회</div></div></div>`;
   const pay = d.pay;
   return `<div class="rm-cards">${card}${peek}</div>`
     + `<div class="rm-enters"><div class="rm-enter">${DOOR}입장하기</div><div class="rm-enter rm-peek"></div></div>`
@@ -109,13 +135,13 @@ function rmContent(d, due) {
     + `<div class="ln" style="margin-top:12px">다음결제일 : ${d.next_dot}</div></div>`;
 }
 // long=true: 시안 A0·A5처럼 세로로 긴 전체 화면(캡처 비교용). 평소엔 탭 고정 + 본문 스크롤.
-const rmScreen = (d, due, long, toast = '') => long
-  ? SB + '<div class="hdr mm-hdr">내 멤버십</div>' + rmContent(d, due) + rmTabbar(false)
-  : SB + '<div class="hdr mm-hdr">내 멤버십</div>' + `<div class="rm-view scr">${rmContent(d, due)}<div class="padb" style="height:18px"></div></div>` + toast + rmTabbar(true);
-const A0 = (d, long) => rmScreen(d, false, long);
-const A5 = (d, long) => rmScreen(d, true, long);
-const A6 = (d) => rmScreen(d, false, false,
-  `<div class="toast" style="bottom:100px" data-act="hideToast">${ic('check', '#5BE0A6', 20, 2.4)}<div><b>구독해지를 철회했어요</b><div class="s">${d.next_md}에 월 구독료 ${won(d.price)}이 결제돼요.</div></div></div>`);
+const rmScreen = (d, due, long, toast = '', pk = null) => long
+  ? SB + '<div class="hdr mm-hdr">내 멤버십</div>' + rmContent(d, due, pk) + rmTabbar(false)
+  : SB + '<div class="hdr mm-hdr">내 멤버십</div>' + `<div class="rm-view scr">${rmContent(d, due, pk)}<div class="padb" style="height:18px"></div></div>` + toast + rmTabbar(true);
+const A0 = (d, long, pk) => rmScreen(d, false, long, '', pk);
+const A5 = (d, long, pk) => rmScreen(d, true, long, '', pk);
+const A6 = (d, pk) => rmScreen(d, false, false,
+  `<div class="toast" style="bottom:100px" data-act="hideToast">${ic('check', '#5BE0A6', 20, 2.4)}<div><b>구독해지를 철회했어요</b><div class="s">${d.next_md}에 월 구독료 ${won(d.price)}이 결제돼요.</div></div></div>`, pk);
 
 // ───────── A1 해지 이유(1화면) ─────────
 function A1(d, sel, etcText, off) {
@@ -263,10 +289,10 @@ const K2 = (d, st) => {
 };
 
 // ───────── 사유 → 제안 결정 (README_SPEC 5번 표와 같은 규칙) ─────────
-// member.offerSeenAt: 제안 화면(A2)을 한 번이라도 본 회원은 이유·설정과 관계없이 제안 없이 해지 예약(회원당 1번, README_SPEC 5-1).
+// seen: 이 회원이 «이 상품»에서 제안 화면(A2)을 이미 봤으면 이유·설정과 관계없이 제안 없이 해지 예약(회원 ID + 상품 ID마다 1번, README_SPEC 5-4).
 // pending: 이미 받아 둔 할인·쉬어가기가 다음 결제에 걸려 있으면 금전 제안(1·2번)은 다시 주지 않는다(중복 적용 금지).
-function resolveOffer(reason, cfg, sub, member) {
-  if (member && member.offerSeenAt) return null;
+function resolveOffer(reason, cfg, sub, seen) {
+  if (seen) return null;
   const money = !(sub && (sub.discountPending || sub.skipPending));
   const keep = cfg.keep_on ? 'keep' : null;
   if (reason === 'price') return cfg.price_on && money ? 'price' : keep;
@@ -287,31 +313,45 @@ function side() {
   return `<div class="side"><div class="brand">${SYM}니짐내짐 센터 관리</div>` + navs.map(([k, l]) => k === 'g' ? `<div class="grp">${l}</div>`
     : `<div class="nav${k === 's' || k === 'son' ? ' sub' : ''}${k === 'son' ? ' on' : ''}">${l}</div>`).join('') + '</div>';
 }
-// 할인 금액 검사: 1,000원 이상 · 1,000원 단위 · 그 센터 구독 상품 중 가장 낮은 월 결제금액 미만
-function discError(raw, minPrice) {
+// 할인 금액 검사: 1,000원 이상 · 1,000원 단위 · 상한(센터 기본 = 기본을 따르는 상품 중 가장 낮은 월 결제금액, 상품별 = 그 상품 월 결제금액) 미만
+function discError(raw, maxExcl, own = false) {
   const n = Number(String(raw).replace(/[^0-9]/g, '') || 0);
   if (n < 1000) return '1,000원 이상 입력해 주세요. 0원 할인은 제안할 수 없어요.';
-  if (n >= minPrice) return `월 결제금액(${won(minPrice)})보다 적게 입력해 주세요. 할인 후 결제금액이 0원 이하가 돼요.`;
+  if (n >= maxExcl) return `${own ? '이 상품 ' : ''}월 결제금액(${won(maxExcl)})보다 적게 입력해 주세요. 할인 후 결제금액이 0원 이하가 돼요.`;
   if (n % 1000) return '1,000원 단위로 입력해 주세요.';
   return null;
 }
 const brError = (cfg) => cfg.move_on && !cfg.branches.length ? '지점을 1곳 이상 골라 주세요. 안내할 지점이 없으면 이 제안을 꺼 주세요.' : null;
-const adminErrors = (d, cfg) => ({ disc: cfg.price_on ? discError(cfg.discRaw, d.price) : null, br: brError(cfg) });
+const following = (d, cfg) => products(d).filter((p) => !cfg.own[p.id]);
+// 따로 설정한 상품은 센터 기본 상한 계산에서 뺀다. 모두 따로 설정이면 새 상품에만 쓰이므로 상한 없음.
+const minFollow = (d, cfg) => { const f = following(d, cfg); return f.length ? Math.min(...f.map((p) => p.p)) : Infinity; };
+function adminErrors(d, cfg) {
+  const own = {};
+  for (const p of products(d)) { const o = cfg.own[p.id]; const e = o && o.price_on ? discError(o.discRaw, p.p, true) : null; if (e) own[p.id] = e; }
+  return { disc: cfg.price_on ? discError(cfg.discRaw, minFollow(d, cfg)) : null, br: brError(cfg), own, n: (cfg.price_on && discError(cfg.discRaw, minFollow(d, cfg)) ? 1 : 0) + (brError(cfg) ? 1 : 0) + Object.keys(own).length };
+}
 
 function adminCard(no, key, reasons, offer, on, body) {
   const st = on ? '<span class="chip ok">켜짐</span>' : '<span class="chip off">꺼짐</span>';
   return `<div class="c${on ? '' : ' offc'}" data-card="${key}"><div class="ch"><span class="no">${no}</span><div class="ti"><div class="r">회원이 고른 이유 · ${reasons}</div><div class="o">${offer}</div></div>`
     + `${st}<span class="sw${on ? ' on' : ''}" data-act="sw" data-k="${key}" role="switch" aria-checked="${on}"></span></div><div class="cb">${body}</div></div>`;
 }
-function adminScreen(d, cfg, ui) {
-  const e = adminErrors(d, cfg);
+const RULE_NOTICE = (mt) => `<div class="notice" style="margin-top:${mt}px"><b>구독 상품을 2개 이상 쓰는 회원에게는 제안을 상품마다 한 번씩 보여줘요.</b> 같은 상품은 해지를 철회하고 다시 들어와도 제안이 다시 보이지 않아요.</div>`;
+const summ = (c) => [c.price_on ? `할인 ${won(c.disc)}` : '할인 안 함', c.skip_on ? '쉬어가기 켜짐' : '쉬어가기 꺼짐'];
+const ownN = (cfg) => Object.values(cfg.own).filter(Boolean).length;
+function adminTabs(d, cfg, tab) {
+  return `<div class="tabs2"><span class="${tab === 'center' ? 'on' : ''}" data-act="tab" data-v="center">센터 기본 설정</span>`
+    + `<span class="${tab === 'prod' ? 'on' : ''}" data-act="tab" data-v="prod">상품별 설정 <span class="n">${products(d).length}개 중 따로 ${ownN(cfg)}</span></span></div>`;
+}
+function centerCards(d, cfg, e) {
   const FALL = cfg.keep_on ? '<div class="fall">꺼져 있어요. 이 이유를 고른 회원에겐 <b>5번 «지금 가격 유지 안내»</b>를 보여줘요.</div>'
     : '<div class="fall">꺼져 있어요. 5번도 꺼져 있어서 이 이유를 고른 회원은 <b>제안 없이 바로 해지 예약</b>돼요.</div>';
+  const min = minFollow(d, cfg);
   let b1 = FALL;
   if (cfg.price_on) {
     b1 = `<div class="f"><div class="lb">할인 금액 <span class="chip req">필수</span></div><div class="inl"><div class="in num${e.disc ? ' bad' : ''}"><input id="disc" inputmode="numeric" autocomplete="off" value="${esc(cfg.discRaw)}" aria-label="할인 금액"></div><span class="unit">원 · 다음 결제 1회</span></div>`
-      + (e.disc ? `<div class="errt">${ERR}<span id="discErr">${e.disc}</span></div>` : `<div class="hint">1,000원 단위 · 1,000원 이상, <b>회원의 월 결제금액보다 적게</b>(이 센터 구독 상품 중 가장 낮은 월 결제금액 ${won(d.price)} 기준)</div>`) + '</div>';
-    if (!e.disc) { const dn = cfg.disc; b1 += `<div class="prev">회원에게 보이는 문구 · «다음 결제를 <b>${won(dn)}</b> 할인해 드릴게요» — ${d.next_md} 결제 ${won(d.price)} → <b>${won(d.price - dn)}</b></div>`; }
+      + (e.disc ? `<div class="errt">${ERR}<span id="discErr">${e.disc}</span></div>` : `<div class="hint">1,000원 단위 · 1,000원 이상, <b>회원의 월 결제금액보다 적게</b>${min < Infinity ? `(센터 기본을 따르는 상품 중 가장 낮은 월 결제금액 ${won(min)} 기준)` : '(지금은 모든 상품이 따로 설정 — 새로 만든 상품에 적용)'}</div>`) + '</div>';
+    if (!e.disc) { const dn = cfg.disc; b1 += `<div class="prev">회원에게 보이는 문구 · «다음 결제 <b>${won(dn)}</b> 할인» — ${d.next_md} 결제 ${won(d.price)} → <b>${won(d.price - dn)}</b></div>`; }
   }
   const c1 = adminCard(1, 'price_on', '가격이 부담돼요', '다음 결제 1회 할인', cfg.price_on, b1);
   let b2;
@@ -339,21 +379,72 @@ function adminScreen(d, cfg, ui) {
   const b5 = cfg.keep_on ? '<div class="fall">«기타(직접 입력)»을 고른 회원에게 지금 이용 금액이 유지된다는 안내만 보여줘요. 설정할 값은 없어요.</div>'
     : '<div class="fall">꺼져 있어요. «기타»를 고른 회원은 제안 없이 바로 해지 예약돼요.</div>';
   const c5 = adminCard(5, 'keep_on', '기타(직접 입력) · 그리고 위에서 꺼진 이유', '지금 가격 유지 안내', cfg.keep_on, b5);
-
+  return c1 + c2 + c3 + c4 + c5;
+}
+// 상품 줄 편집칸(스위치 켠 상품만): ①할인 켜기·금액 ②쉬어가기 켜기 — 시안 C2·C3 editor()
+function prodEditor(d, cfg, p, o, err) {
+  const fiveOr = cfg.keep_on ? '<b>5번 «지금 가격 유지 안내»</b>를 보여줘요' : '5번도 꺼져 있어서 <b>제안 없이 바로 해지 예약</b>돼요';
+  const tg = (k, on) => `<div class="tg"><span class="sw${on ? ' on' : ''}" data-act="osw" data-p="${p.id}" data-k="${k}" role="switch" aria-checked="${on}"></span>${on ? '켜짐' : '꺼짐'}</div>`;
+  let r1;
+  if (o.price_on) {
+    r1 = tg('price_on', true) + `<div class="f" style="margin-top:10px"><div class="lb">할인 금액 <span class="chip req">필수</span></div>`
+      + `<div class="inl"><div class="in num${err ? ' bad' : ''}"><input id="od-${p.id}" class="odisc" data-p="${p.id}" inputmode="numeric" autocomplete="off" value="${esc(o.discRaw)}" aria-label="${esc(p.n)} 할인 금액"></div><span class="unit">원 · 다음 결제 1회</span></div>`
+      + (err ? `<div class="errt">${ERR}<span class="oerr">${err}</span></div>`
+        : `<div class="hint">1,000원 단위 · 1,000원 이상, <b>이 상품 월 결제금액(${won(p.p)})보다 적게</b></div>`
+        + `<div class="prev" style="margin-top:8px">회원에게 보이는 문구 · «다음 결제 <b>${won(o.disc)}</b> 할인» — <span style="white-space:nowrap">${d.next_md} 결제 ${won(p.p)} → <b>${won(p.p - o.disc)}</b></span></div>`) + '</div>';
+  } else r1 = tg('price_on', false) + `<div class="fall" style="margin-top:8px">이 상품은 «가격이 부담돼요»를 고른 회원에게 ${fiveOr}.</div>`;
+  const r2 = o.skip_on ? tg('skip_on', true) + '<div class="fall" style="margin-top:8px">다음 결제를 한 번 건너뛰고 한 달 쉬어요. 이후 같은 금액으로 자동 재개돼요.</div>'
+    : tg('skip_on', false) + `<div class="fall" style="margin-top:8px">이 이유를 고른 회원에게 ${o.price_on ? '<b>위 할인 제안</b>을 대신 보여줘요' : fiveOr}.</div>`;
+  const [a, b] = summ(cfg);
+  return `<div class="ped"><div class="rw"><div class="rl">가격이 부담돼요<b>다음 결제 1회 할인</b></div><div>${r1}</div></div>`
+    + `<div class="rw"><div class="rl">바빠서 · 다쳐서 · 여행·출장<b>한 달 쉬어가기</b></div><div>${r2}</div></div>`
+    + `<div class="ft">이사·운동 효과·기타 제안은 이 상품도 <b>센터 기본 설정</b>을 따라요. 스위치를 끄면 위 값은 지워지고 센터 기본(${a} · ${b})으로 돌아가요.</div></div>`;
+}
+function prodRow(d, cfg, p, open, err) {
+  const o = cfg.own[p.id];
+  const meta = `월 ${won(p.p)}` + (p.ev ? ' · <span class="ev">이벤트가</span>' : '') + (p.added && !o ? ` · ${p.added}` : '');
+  let st;
+  if (o) {
+    const [a, b] = summ(o);
+    st = `<div class="ps own${err ? ' bad' : ''}"><div class="h"><span class="chip own">따로 설정</span><span class="lnk" data-act="popen" data-p="${p.id}">${open ? '접기' : '수정'}</span></div>`
+      + `<div class="v">${err ? '할인 금액을 고쳐 주세요' : `<b>${a}</b> · <b>${b}</b>`}</div></div>`;
+  } else { const [a, b] = summ(cfg); st = `<div class="ps"><div class="h">센터 기본 따름</div><div class="v">${a} · ${b}</div></div>`; }
+  const sw = `<div class="pw"><span class="l${o ? ' on' : ''}">이 상품만 따로 설정</span><span class="sw${o ? ' on' : ''}" data-act="psw" data-p="${p.id}" role="switch" aria-checked="${!!o}" aria-label="${esc(p.n)} 따로 설정"></span></div>`;
+  return `<div class="prow" data-pid="${p.id}"><div class="pr"><div class="pn"><div class="t">${esc(p.n)}</div><div class="m">${meta}</div></div>${st}${sw}</div>`
+    + (o && open ? prodEditor(d, cfg, p, o, err) : '') + '</div>';
+}
+function adminScreen(d, cfg, ui) {
+  const e = adminErrors(d, cfg), tab = ui.tab || 'center', P = products(d);
   const onN = ['price_on', 'skip_on', 'move_on', 'eff_on', 'keep_on'].filter((k) => cfg[k]).length;
-  const errs = (e.disc ? 1 : 0) + (e.br ? 1 : 0);
-  let top = '<div class="notice"><b>회원이 구독을 해지할 때 이유를 하나 고르면, 이유에 맞는 제안을 한 번만 보여줘요.</b> 회원은 같은 화면에서 언제든 «그래도 해지할게요»로 바로 해지 예약할 수 있어요(해지를 막지 않아요). '
+  const errs = e.n;
+  let top = '<div class="notice"><b>회원이 구독을 해지할 때 이유를 하나 고르면, 이유에 맞는 제안을 보여줘요.</b> 회원은 같은 화면에서 언제든 «그래도 해지할게요»로 바로 해지 예약할 수 있어요(해지를 막지 않아요). '
     + '라벨 옆 <span class="chip req">필수</span>는 켰을 때 꼭 입력, <span class="chip">선택</span>은 비워도 돼요.</div>';
-  if (onN === 0) top += '<div class="notice" style="margin-top:8px;background:#FFF8E6;border-color:#F3DFA8;color:#7A5A00"><b style="color:#7A5A00">제안이 모두 꺼져 있어요.</b> 회원은 이유만 고르고 바로 해지 예약돼요.</div>';
-  if (errs) top += `<div class="notice err" style="margin-top:8px"><b>고칠 곳이 ${errs}개 있어요.</b> 빨간 칸을 고쳐야 저장할 수 있어요.</div>`;
+  let warn = '';
+  if (onN === 0) warn += '<div class="notice" style="margin-top:8px;background:#FFF8E6;border-color:#F3DFA8;color:#7A5A00"><b style="color:#7A5A00">제안이 모두 꺼져 있어요.</b> 회원은 이유만 고르고 바로 해지 예약돼요.</div>';
+  if (errs) warn += `<div class="notice err" style="margin-top:8px"><b>고칠 곳이 ${errs}개 있어요.</b> 빨간 칸을 고쳐야 저장할 수 있어요.${tab === 'center' && Object.keys(e.own).length ? ' (상품별 설정 탭에도 있어요)' : tab === 'prod' && (e.disc || e.br) ? ' (센터 기본 설정 탭에도 있어요)' : ''}</div>`;
   const pvI = onN === 0 ? -1 : ui.pvI;
   const tabs = ['가격 부담', '바빠서·부상·여행', '이사', '효과 없음', '기타'].map((t, i) => `<span class="tb${i === pvI ? ' on' : ''}" data-act="pv" data-i="${i}">${t}</span>`).join('');
-  const pv = `<div class="pv"><div class="t">회원에게 이렇게 보여요</div><div class="s">저장 전 미리보기 · 실제 회원 화면과 같은 구성</div><div class="tabs">${tabs}</div>`
+  const sel = tab === 'prod' ? `<div class="sel"><select id="pvsel" aria-label="미리볼 상품">${P.map((p) => `<option value="${p.id}"${p.id === ui.pvP ? ' selected' : ''}>${esc(p.n)}</option>`).join('')}</select></div>` : '';
+  const pv = `<div class="pv"><div class="t">회원에게 이렇게 보여요</div><div class="s">${tab === 'prod' ? '고른 상품에 실제로 적용되는 값 기준 미리보기' : '저장 전 미리보기 · 실제 회원 화면과 같은 구성'}</div>${sel}<div class="tabs">${tabs}</div>`
     + '<div class="ph"><iframe id="pvf" title="회원 화면 미리보기" tabindex="-1"></iframe></div></div>';
-  const foot = `<div class="foot"><span class="m${errs ? ' e' : ''}" id="footMsg">${errs ? `고칠 곳 ${errs}개 · 저장할 수 없어요` : `켜진 제안 ${onN}/5 · ${ui.savedAt}`}</span>`
+  const fm = errs ? `고칠 곳 ${errs}개 · 저장할 수 없어요` : tab === 'prod' ? `따로 설정 ${ownN(cfg)}개 · ${ui.savedAt}` : `센터 기본 · 켜진 제안 ${onN}/5 · ${ui.savedAt}`;
+  const foot = `<div class="foot"><span class="m${errs ? ' e' : ''}" id="footMsg">${fm}</span>`
     + `<span class="b sec" data-act="revert">되돌리기</span><span class="b ${errs ? 'dis' : 'pri'}" data-act="save" aria-disabled="${!!errs}">저장</span></div>`;
-  const main = `<div class="content"><div class="ph"><div><h1>해지 회유 설정</h1><div class="sub">구독 멤버십 · ${esc(d.center)}</div></div></div>` + top
-    + `<div class="wrap"><div>${c1}${c2}${c3}${c4}${c5}</div>${pv}</div></div>` + foot;
+  let body;
+  if (tab === 'center') {
+    const f = following(d, cfg);
+    const scope = `<div class="scope"><span>이 설정이 적용되는 상품 <b>${f.length}개</b> / 구독 상품 ${P.length}개 · 새로 만든 구독 상품도 자동으로 적용돼요.</span>`
+      + (ownN(cfg) ? `<span class="lnk" data-act="tab" data-v="prod">따로 설정한 상품 ${ownN(cfg)}개 보기</span>` : '') + '</div>';
+    body = top + warn + adminTabs(d, cfg, tab) + scope + RULE_NOTICE(10) + `<div class="wrap"><div>${centerCards(d, cfg, e)}</div>${pv}</div>`;
+  } else {
+    const [a, b] = summ(cfg);
+    const t2 = '<div class="notice"><b>상품마다 «이 상품만 따로 설정»을 켜면 할인 금액과 쉬어가기를 그 상품에만 따로 정할 수 있어요.</b> '
+      + `끈 상품은 센터 기본 설정(${a} · ${b})을 따르고, 새로 만든 구독 상품도 자동으로 센터 기본을 따라요.</div>` + RULE_NOTICE(8);
+    const lst = `<div class="plist"><div class="plh"><span>구독 상품 ${P.length}개</span><span>해지 회유 제안</span><span style="text-align:right">상품별 설정</span></div>`
+      + P.map((p) => prodRow(d, cfg, p, ui.open === p.id || !!e.own[p.id], e.own[p.id])).join('') + '</div>';
+    body = adminTabs(d, cfg, tab) + t2 + warn + `<div class="wrap">${lst}${pv}</div>`;
+  }
+  const main = `<div class="content"><div class="ph"><div><h1>해지 회유 설정</h1><div class="sub">구독 멤버십 · ${esc(d.center)}</div></div></div>` + body + '</div>' + foot;
   return `<div class="app">${side()}<div class="main">${main}</div></div>`;
 }
 // 미리보기 탭 → 그 이유를 고른 회원이 보게 될 화면(제안 없으면 A1 «바로 해지 예약»)
@@ -361,7 +452,7 @@ const PV_REASON = ['price', 'busy', 'move', 'effect', 'etc'];
 function previewHTML(d, cfg, pvI) {
   const onN = ['price_on', 'skip_on', 'move_on', 'eff_on', 'keep_on'].filter((k) => cfg[k]).length;
   const reason = pvI < 0 || onN === 0 ? 'busy' : PV_REASON[pvI];
-  const kind = resolveOffer(reason, cfg, null);
+  const kind = resolveOffer(reason, cfg, null, null);
   const inner = kind ? A2(d, kind, reason, cfg, reason === 'etc' ? d.etc_text : '') : A1(d, reason, '', true);
   return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">'
     + '<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="proto.css"></head><body class="pvbody"><div class="phone">' + inner + '</div></body></html>';
