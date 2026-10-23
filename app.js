@@ -45,6 +45,7 @@ function render() {
     case 'A5': h = A5(d, LONG); break;
     case 'A6': h = A6(d); break;
     case 'K1': h = K1(d); break;
+    case 'K2': h = K2(d, S.k2); break;
   }
   const app = $('#app'); app.innerHTML = h;
   app.classList.toggle('long', LONG && (S.screen === 'A0' || S.screen === 'A5'));
@@ -144,7 +145,12 @@ const ACT = {
   otherCancel(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지] → 지금 앱 동작 그대로(회유 흐름 없음, 이 프로토타입엔 그 화면이 없어요).`; render(); },
   otherWithdraw(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지 철회] → 지금 앱 동작 그대로.`; render(); },
   hideToast() { S.toast = false; $('.toast')?.classList.add('gone'); },
-  kakaoWithdraw() { ACT.withdraw('alimtalk'); },
+  kakaoWithdraw() { S.k2 = { reserved: 'ask', ended: 'ended' }[S.sub.status] || 'done'; S.log = S.k2 === 'ended' ? '해지예정일이 지난 뒤 연 링크 → «이미 종료된 구독이에요» 안내만(구매·결제 화면으로 보내지 않음).' : '알림톡 [구독해지 철회하기] → 앱 로그인 확인 → 철회 페이지(결제 기능 없음). 링크를 연 것만으로는 철회 안 됨.'; go('K2'); },
+  kakaoConfirm() {
+    if (S.sub.status !== 'reserved') { S.k2 = S.sub.status === 'ended' ? 'ended' : 'done'; S.log = '이미 철회됐어요 — 변화 없음(두 번 눌러도 안전).'; return render(); }
+    S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = 'alimtalk'; }
+    S.k2 = 'done'; S.log = '알림톡 철회 페이지에서 철회. 다음 결제 그대로(이 페이지엔 결제·금액 표시 없음).'; render();
+  },
   kakaoView() { S.scrollTop = 'svc'; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
 };
 
@@ -223,6 +229,9 @@ const GO = {
   A5: () => { PANEL.reason('price'); ACT.reserve(); ACT.toMembership(); },
   A6: () => { PANEL.reason('price'); ACT.reserve(); ACT.withdraw(); },
   K1: () => { PANEL.reason('price'); ACT.reserve(); PANEL.time('k1'); },
+  K2: () => { GO.K1(); ACT.kakaoWithdraw(); },
+  K2done: () => { GO.K2(); ACT.kakaoConfirm(); },
+  K2ended: () => { GO.K1(); PANEL.time('pay'); ACT.kakaoWithdraw(); },
   B1: () => { S.mode = 'admin'; },
   B2: () => { S.mode = 'admin'; S.draft.discRaw = '0'; S.draft.disc = 0; S.draft.branches = []; S.draft.eff_kind = 'inbody'; },
   B3: () => { PANEL.data('stress'); PANEL.preset('all'); S.mode = 'admin'; S.draft.discRaw = '1,290,000'; S.draft.disc = 1290000; },

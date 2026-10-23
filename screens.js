@@ -1,4 +1,5 @@
 // 니짐내짐 구독 «해지예약 회유» B안 — 화면 그리기. 시안(_src/build.py·admin.py) 마크업을 그대로 옮겼다(클래스·문구·숫자 동일).
+// v1.2(10-23): K1 알림톡 = 카카오 정보성 검수 수정본(금액·정가·재가입 문장 삭제), 알림톡 [구독해지 철회하기] → K2 철회 페이지(결제 기능 없음).
 // v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
 'use strict';
@@ -7,7 +8,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 const BASE = {
   user: '김민지', center: '엔짐 영등포점', product: '헬스 구독멤버십', ty: '헬스', price: 43800, listp: 90000,
-  next_md: '11월 15일', next_full: '2026.11.15(일)', next_dot: '2026.11.15', use_end_md: '11월 14일', use_period: '2026.10.15 ~ 2026.11.14',
+  next_md: '11월 15일', next_long: '2026년 11월 15일', next_full: '2026.11.15(일)', next_dot: '2026.11.15', use_end_md: '11월 14일', use_period: '2026.10.15 ~ 2026.11.14',
   alarm_md: '11월 12일', skip_end: '12월 14일', resume: '12월 15일',
   visits: 12, period: '10월 1일~23일', days_left: 22, daily: '하루 2회 이용가능(1/2)', open_msg: '오후 11시 30분 영업종료',
   others: [{ name: '개인락커', period: '2026.10.15 ~ 2026.11.14', extra: ['자리정보', 'A302'], fee: 5000, due: false }],
@@ -222,15 +223,33 @@ const KAKAO_CSS = `<style>
 .kk .time{font-size:11px;color:#3A4A5A;align-self:flex-end;margin-left:6px}
 </style>`;
 function K1(d) {
-  const body = '<div class="t">구독 해지예정 3일 전 안내</div>'
-    + `${esc(d.user)}님, 이용 중인 구독멤버십이 ${d.next_md}에 해지될 예정이에요. ${d.use_end_md}까지 이용할 수 있어요.<br><br>`
+  // 10-23 카카오 검수 수정(시안 v2 _src/build.py K()와 같은 문안): 광고성 한 줄이면 템플릿 전체 반려 → 금액·정가·재가입 문장 없음
+  const body = '<div class="t">구독 해지 예정 안내</div>'
+    + `${esc(d.user)}님, 이용 중인 ${esc(d.product)}이 ${d.next_long}에 해지될 예정이에요.<br><br>`
     + `<div class="r">- 센터: ${esc(d.center)}</div><div class="r">- 멤버십: ${esc(d.product)}</div>`
-    + `<div class="r">- 해지예정일: 2026년 ${d.next_md}</div><div class="r">- 월 구독료: ${won(d.price)}</div><br>`
-    + `해지예정일 전에 구독해지를 철회하면 지금 월 구독료 그대로 이어서 이용할 수 있어요. 해지 후 다시 가입하면 그때의 판매 가격(현재 정가 월 ${won(d.listp)})이 적용돼요.`;
+    + `<div class="r">- 해지 예정일: ${d.next_long}</div><br>`
+    + '계속 이용하시려면 해지 예정일 전에 아래 버튼으로 해지를 철회할 수 있어요.';
   return KAKAO_CSS + '<div class="kk">' + SB.replace('class="sb"', 'class="sb" style="background:#B2C7D9"') + '<div class="tt">니짐내짐</div>'
     + `<div class="msg"><div class="pf">${SYM}</div><div><div class="nm">니짐내짐</div><div style="display:flex"><div class="bub"><div class="ah">알림톡 도착</div><div class="bd">${body}</div>`
     + '<div class="bts"><div class="kb eqk" data-act="kakaoWithdraw">구독해지 철회하기</div><div class="kb eqk" data-act="kakaoView">내 멤버십 보기</div></div></div><span class="time">오전 10:00</span></div></div></div><div class="end"></div></div>';
 }
+
+// ───────── K2 알림톡 [구독해지 철회하기] 철회 페이지 ─────────
+// 카카오 알림톡 블랙리스트 8번: 버튼으로 연결되는 페이지에 결제 기능 금지 → 금액·결제카드·결제 버튼 없이 철회만 한다(README_SPEC 12번).
+// 링크를 연 것만으로는 철회하지 않고(GET 금지) 로그인 확인 뒤 버튼 한 번으로 철회한다.
+const K2 = (d, st) => {
+  const done = st === 'done', ended = st === 'ended';
+  const head = ended ? `<div class="ok">${ic('cal', '#202024', 26)}</div><div class="h1">이미 종료된 구독이에요</div>`
+    : done ? `<div class="ok" style="background:#E3F8EE">${ic('check', '#1BAA6B', 28, 2.4)}</div><div class="h1">구독해지를 철회했어요</div>`
+    : `<div class="ok">${ic('cal', '#202024', 26)}</div><div class="h1">해지 예정인 멤버십이에요</div>`;
+  const v = ended ? `${d.next_dot} 해지됨` : done ? `<s>${d.next_dot}</s> 취소됨` : d.next_dot;
+  const info = ended ? `${d.next_dot}에 해지돼서 철회할 수 없어요.` : done ? '해지 예정이 취소됐어요. 지금처럼 계속 이용할 수 있어요.'
+    : `<b>${d.use_end_md}까지</b> 철회할 수 있어요. 철회하면 해지 예정이 취소되고 지금처럼 계속 이용해요.`;
+  return SB + hdr('구독해지 철회', false) + scr(91, `<div class="done">${head}<div class="what">${esc(d.center)} · ${esc(d.product)}</div>`
+    + `<div class="box"><div class="kv"><span class="k">해지 예정일</span><span class="v">${v}</span></div></div>`
+    + `<div class="info" style="margin-top:14px">${info}</div><div class="end"></div></div>`, 96)
+    + `<div class="stack">${st === 'ask' ? '<div class="btn pri" data-act="kakaoConfirm">구독해지 철회</div>' : '<div class="btn pri" data-act="toMembership">내 멤버십으로</div>'}</div>`;
+};
 
 // ───────── 사유 → 제안 결정 (README_SPEC 5번 표와 같은 규칙) ─────────
 // pending: 이미 받아 둔 할인·쉬어가기가 다음 결제에 걸려 있으면 금전 제안(1·2번)은 다시 주지 않는다(중복 적용 금지).
