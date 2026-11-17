@@ -236,20 +236,23 @@ const distKm = (p, q) => {
 };
 const fmtKm = (k) => k < 1 ? `${Math.max(10, Math.round(k * 100) * 10)}m` : k < 10 ? `${k.toFixed(1)}km` : `${Math.round(k).toLocaleString('ko-KR')}km`;
 const hasPt = (b) => typeof b[2] === 'number' && typeof b[3] === 'number';
-const nearest = (brs, pt, n = 5) => brs.filter(hasPt).map((b) => ({ n: b[0], a: b[1], km: distKm(pt, [b[2], b[3]]) })).sort((x, y) => x.km - y.km).slice(0, n);
+// 추천 거리 상한(직선거리 km)·추천 개수 — 운영에서 바꿀 값은 이 두 줄만 고치면 된다(README_SPEC 19-1).
+const MOVE_MAX_KM = 50, MOVE_TOP_N = 5;
+// 상한 밖 지점은 5곳이 안 차도 채우지 않는다. 0곳이면 화면에 지점 칸 없이 해지 완료 안내만.
+const nearest = (brs, pt, n = MOVE_TOP_N, maxKm = MOVE_MAX_KM) => brs.filter(hasPt).map((b) => ({ n: b[0], a: b[1], km: distKm(pt, [b[2], b[3]]) })).filter((b) => b.km <= maxKm).sort((x, y) => x.km - y.km).slice(0, n);
 const I_SEARCH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>';
 // A4s 이사 갈 곳 주소 검색 — 해지 예약은 이미 저장됨. [건너뛰기] = 추천 없이 완료 화면.
 const A4s = (d, busy = false) => SB + hdr('', false) + scr(91, '<div class="done mvs">'
   + `<div class="rsvd">${ic('check', '#1BB47C', 16, 2.6)}<span>해지 예약이 완료됐어요 · ${d.use_end_md}까지 지금처럼 이용할 수 있어요</span></div>`
   + '<div class="h1">이사 갈 곳 근처<br>지점을 찾아 드릴까요?</div>'
-  + '<div class="p">동네 이름이나 도로명으로 검색하면 가까운 지점 5곳을 알려 드려요.</div>'
+  + `<div class="p">동네 이름이나 도로명으로 검색하면 가까운 지점을 최대&nbsp;${MOVE_TOP_N}곳 알려 드려요.</div>`
   + `<div class="sfield${busy ? ' busy' : ''}" data-act="openSearch" role="button">${I_SEARCH}<span>${busy ? '가까운 지점을 찾고 있어요…' : '예) 판교역로 146, 백현동'}</span></div>`
   + '<div class="ms">검색하지 않아도 해지 예약은 그대로예요. 이사 갈 주소는 지점을 찾는 데만 쓰고 저장하지 않아요.</div><div class="end"></div></div>', 120)
   + '<div class="stack solid"><div class="btn line" data-act="skipMove">건너뛰기</div></div>';
 // near: [{n, a, km}] 가까운 순(최대 5곳), place: 회원이 고른 주소. 해지를 붙잡지 않는 정보 안내 — 어떤 버튼도 해지예약을 바꾸지 않는다.
 const brInfo = (d, near, place) => `<div class="mv"><div class="lt">이사 갈 곳에서 가까운 지점이에요</div><div class="mvq">${ic('mappin', '#6B6B73', 14)}<span>${esc(place)}</span></div><div class="box">`
   + near.map((b, i) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0;flex:1"><div class="n">${esc(b.n)}</div><div class="a">${esc(b.a)}</div></div><div class="rt"><span class="km">${fmtKm(b.km)}</span><span class="see" data-act="viewBranch" data-i="${i}">지점 보기</span></div></div>`).join('')
-  + `</div><div class="ms">직선거리 기준 가까운 순이에요 · <span class="lnk" data-act="reSearch">주소 다시 검색</span><br>${esc(d.center)}에서 안내하는 지점이에요. 새로 이용하는 방법은 지점에서 안내해 드려요.</div></div>`;
+  + `</div><div class="ms">직선거리 ${MOVE_MAX_KM}km 안에서 가까운 순이에요 · <span class="lnk" data-act="reSearch">주소 다시 검색</span><br>${esc(d.center)}에서 안내하는 지점이에요. 새로 이용하는 방법은 지점에서 안내해 드려요.</div></div>`;
 // mv: 이사 사유로 해지 예약한 회원(추천이 있든 없든 같은 제목) · near/place: 주소 검색으로 찾은 가까운 지점
 const A4 = (d, near = [], place = '', mv = false) => SB + hdr('', false) + scr(91, '<div class="done">'
   + `<div class="ok">${ic('cal', '#202024', 26)}</div>`

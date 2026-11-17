@@ -250,10 +250,10 @@ const ACT = {
     ACT.setMovePt(place, g && g.pt, g && g.q);
   },
   setMovePt(place, pt, q) {
-    const near = pt ? nearest(curCfg().branches, pt, 5) : [];
-    S.move = { ...newMove(), place, pt, near, result: !pt ? 'geocode_failed' : near.length ? `found ${near.length}` : 'no_branches' };
+    const near = pt ? nearest(curCfg().branches, pt) : [];
+    S.move = { ...newMove(), place, pt, near, result: !pt ? 'geocode_failed' : near.length ? `found ${near.length}` : 'none_within_limit' };
     if (near.length) cur().info_branches = near.map((b) => b.n); else delete cur().info_branches;
-    S.log = !pt ? `«${place}» 위치를 찾지 못함 → 추천 없이 해지 완료 안내만.` : `«${place}»${q && q !== place ? ` (위치 기준: ${q})` : ''} → 가까운 ${near.length}곳: ${near.map((b) => `${b.n} ${fmtKm(b.km)}`).join(' · ')}`;
+    S.log = !pt ? `«${place}» 위치를 찾지 못함 → 추천 없이 해지 완료 안내만.` : !near.length ? `«${place}» → 직선거리 ${MOVE_MAX_KM}km 안 등록 지점 0곳 → 지점 칸 없이 해지 완료 안내만.` : `«${place}»${q && q !== place ? ` (위치 기준: ${q})` : ''} → 가까운 ${near.length}곳: ${near.map((b) => `${b.n} ${fmtKm(b.km)}`).join(' · ')}`;
     if (S.screen === 'A4s' || S.screen === 'A4') go('A4'); else render();
   },
   hideToast() { S.toast = false; $('.toast')?.classList.add('gone'); },
@@ -378,6 +378,9 @@ const GO = {
   'A2-3': () => { PANEL.preset('all'); PANEL.reason('move'); },
   A4s: () => { PANEL.preset('all'); PANEL.reason('move'); ACT.reserve(); },
   A4m: () => { GO.A4s(); ACT.setMovePt('서울 강남구 테헤란로 152', [37.500019, 127.036548]); },
+  // 50km 상한 확인용: 부산 해운대(부산 지점만) · 제주(50km 안 0곳 → 완료 안내만)
+  A4mb: () => { GO.A4s(); ACT.setMovePt('부산 해운대구 해운대해변로 264', [35.158496, 129.1563676]); },
+  A4mj: () => { GO.A4s(); ACT.setMovePt('제주특별자치도 제주시 첨단로 242', [33.450701, 126.570667]); },
   A4m0: () => { PANEL.preset('all'); setNbr(0); PANEL.reason('move'); ACT.reserve(); },
   'A2-4': () => PANEL.reason('effect'),
   'A2-4b': () => { PANEL.preset('inbody'); PANEL.reason('effect'); },
