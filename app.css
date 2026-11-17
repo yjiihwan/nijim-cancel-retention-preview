@@ -183,3 +183,22 @@ body{font-family:"Pretendard","Apple SD Gothic Neo",sans-serif;color:var(--ink);
 .done .mv .ms{font-size:13px;color:var(--text2);line-height:19px;margin-top:8px}
 /* 지점 안내로 본문이 길어지면 아래 버튼 뒤로 글이 비치지 않게 흰 바탕 바(버튼 위치는 기존 .stack 그대로) */
 .stack.solid{left:0;right:0;bottom:0;padding:12px 20px 34px;background:#fff;border-top:1px solid var(--line);z-index:4}
+/* v1.5(11-17) 이사: 주소 검색 단계(A4s)·가까운 순 5곳·검색 창 */
+.done.mvs{padding-top:28px}
+.rsvd{display:flex;align-items:flex-start;gap:6px;background:var(--sub-tint);color:#0E7A53;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;line-height:18px}
+.rsvd svg{flex:none;margin-top:1px}
+.mvs .h1{margin-top:22px}
+.sfield{margin-top:20px;height:52px;border:1.5px solid var(--ink);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px;color:var(--text3);cursor:pointer}
+.sfield.busy{border-color:var(--line2);color:var(--text2);background:var(--fill)}
+.mvs .ms{font-size:13px;color:var(--text2);line-height:19px;margin-top:10px}
+.done .mv .mvq{display:flex;align-items:flex-start;gap:4px;font-size:13px;color:var(--text2);line-height:18px;margin:-4px 0 10px}
+.done .mv .mvq svg{flex:none;margin-top:2px}
+.done .mv .rt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.done .mv .km{font-size:14px;font-weight:700;color:var(--rose-text);line-height:18px;white-space:nowrap}
+.done .mv .see{padding:5px 9px}
+.done .lnk{color:#1385C4;font-weight:600;cursor:pointer}
+.pcl{position:absolute;left:0;right:0;top:47px;bottom:0;background:#fff;z-index:20;display:flex;flex-direction:column}
+.pch{height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 20px;border-bottom:1px solid var(--line);font-size:17px;font-weight:700}
+.pch .x{font-size:15px;font-weight:600;color:var(--text2);cursor:pointer;padding:8px 4px}
+.pcw{flex:1;min-height:0;position:relative}
+.pcerr{padding:24px 20px;font-size:14px;line-height:21px;color:var(--text2)}

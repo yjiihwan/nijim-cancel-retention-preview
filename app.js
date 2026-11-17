@@ -4,14 +4,14 @@ const qs = new URLSearchParams(location.search);
 const $ = (s) => document.querySelector(s);
 const SAVED0 = '마지막 저장 10월 23일 14:02 (관리자 박지훈)';
 const PRESETS = {
-  b1: { price_on: true, discRaw: '10,000', skip_on: false, move_on: true, nBr: 2, eff_on: true, eff_kind: 'pt', keep_on: true },
-  all: { price_on: true, discRaw: '10,000', skip_on: true, move_on: true, nBr: 3, eff_on: true, eff_kind: 'pt', keep_on: true },
-  inbody: { price_on: true, discRaw: '10,000', skip_on: true, move_on: true, nBr: 3, eff_on: true, eff_kind: 'inbody', keep_on: true },
+  b1: { price_on: true, discRaw: '10,000', skip_on: false, move_on: true, nBr: 24, eff_on: true, eff_kind: 'pt', keep_on: true },
+  all: { price_on: true, discRaw: '10,000', skip_on: true, move_on: true, nBr: 24, eff_on: true, eff_kind: 'pt', keep_on: true },
+  inbody: { price_on: true, discRaw: '10,000', skip_on: true, move_on: true, nBr: 24, eff_on: true, eff_kind: 'inbody', keep_on: true },
   off: { price_on: false, discRaw: '10,000', skip_on: false, move_on: false, nBr: 0, eff_on: false, eff_kind: 'pt', keep_on: false },
 };
 const S = {
   mode: 'app', data: 'base', visits0: false, feature: true,
-  preset: 'b1', cfg: null, draft: null, ui: { pvI: 0, savedAt: SAVED0, tab: 'center', open: null, pvP: 'p_pt' },
+  preset: 'b1', cfg: null, draft: null, ui: { pvI: 0, savedAt: SAVED0, tab: 'center', open: null, pvP: 'p_pt', brq: '', brf: '', brBad: false, editI: null, editV: null },
   screen: 'A0', reason: null, etc: '', kind: null, scrollTop: 0, toast: true,
   sub: null, subs: null, member: null, attempts: [], log: '',
   subsN: 1, cur: 'p_health', // 구독 상품 1개(헬스) / 2개(헬스 + PT 패키지), 지금 보는 상품
@@ -23,9 +23,19 @@ const D = () => prodData(DB(), S.cur); // 지금 보는 구독 상품 기준 회
 const OTHER = { p_health: 'p_pt', p_pt: 'p_health' };
 const peekD = () => S.subsN === 2 ? { ...prodData(DB(), OTHER[S.cur]), days_left: OTHER[S.cur] === 'p_pt' ? 22 : DB().days_left } : null;
 const discNum = (raw) => Number(String(raw).replace(/[^0-9]/g, '') || 0);
+// 기본 등록 지점: 3곳 = 서울·경기·부산 1곳씩, 24곳 = 서울 10·경기 7·인천 2·부산 3·대구 1·대전 1, 그 밖 = 앞에서부터
+const DEF3 = ['엔짐 강남역점', '엔짐 판교점', '엔짐 해운대점'];
+const DEF24 = [...DEF3, '엔짐 잠실점', '엔짐 성수점', '엔짐 답십리점', '엔짐 노원점', '엔짐 광화문점', '엔짐 홍대점', '엔짐 여의도점', '엔짐 목동점', '엔짐 신림점', '엔짐 사당점',
+  '엔짐 수원역점', '엔짐 광교점', '엔짐 동탄점', '엔짐 일산점', '엔짐 의정부점', '엔짐 하남점', '엔짐 부평점', '엔짐 송도점', '엔짐 부산서면점', '엔짐 센텀점', '엔짐 대구동성로점', '엔짐 대전둔산점'];
+function pickBr(d, n) {
+  const long = d.branchPool.filter((b) => b[0].length > 20); // «긴 값» 데이터의 긴 지점명은 늘 맨 앞에
+  const names = n === 3 ? DEF3 : n === 24 ? DEF24 : null;
+  const rest = names ? names.map((x) => d.branchPool.find((b) => b[0] === x)).filter(Boolean) : d.branchPool.filter((b) => b[0].length <= 20);
+  return [...long, ...rest].slice(0, n).map((b) => [...b]);
+}
 function mkCfg(p) {
   const d = DB();
-  const c = { ...PRESETS[p], branches: d.branchPool.slice(0, PRESETS[p].nBr) };
+  const c = { ...PRESETS[p], branches: pickBr(d, PRESETS[p].nBr) };
   delete c.nBr; c.disc = discNum(c.discRaw);
   c.own = Object.fromEntries(Object.entries(ownDefaults(d)).map(([k, o]) => [k, { ...o, discRaw: o.disc ? o.disc.toLocaleString('ko-KR') : '' }]));
   return c;
@@ -38,12 +48,39 @@ const newSub = () => ({ status: 'active', discountPending: 0, skipPending: false
 // 회원 ID + 상품 ID마다 1번 — seen[상품 ID] = {at, type}. 한 번 보면 남고, 해지 철회·재진입·재가입해도 지워지지 않는다(조작판 «처음부터»만 지움).
 // 다른 상품(구독 2개 회원의 두 번째 상품)은 따로 센다.
 const newMember = () => ({ seen: {} });
+const newMove = () => ({ place: '', near: [], busy: false, result: null });
 const useSub = (pid) => { S.cur = pid; S.sub = S.subs[pid]; };
-function reset() { S.subs = { p_health: newSub(), p_pt: newSub() }; useSub(S.subsN === 2 ? S.cur : 'p_health'); S.member = newMember(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
+function reset() { S.subs = { p_health: newSub(), p_pt: newSub() }; useSub(S.subsN === 2 ? S.cur : 'p_health'); S.member = newMember(); S.attempts = []; S.move = newMove(); S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
 const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
 const cur = () => S.attempts[S.attempts.length - 1];
-// 이사 사유 해지예약 완료 화면에 보여 줄 지점(센터 설정이 켜져 있고 1곳 이상일 때만)
-const moveBrs = () => { const a = cur(), c = curCfg(); return a && a.reason === 'move' && c.move_on ? c.branches : []; };
+// 이사 사유: 주소 검색으로 찾은 가까운 지점(S.move.near). 센터 설정이 켜져 있고 위치가 저장된 지점이 1곳 이상일 때만 검색 단계를 보여 준다.
+const moveOK = () => { const c = curCfg(); return c.move_on && c.branches.some(hasPt); };
+const isMove = () => { const a = cur(); return !!(a && a.reason === 'move'); };
+// ───────── 주소 → 위치(위도·경도) ─────────
+// 시험판은 키가 필요 없는 OpenStreetMap Nominatim(1초에 1번 이하)을 쓴다. 실서비스는 서버에서 카카오 로컬 «주소로 좌표 변환» API 권장(README_SPEC 19번).
+const SIDO_FULL = { 서울: '서울특별시', 부산: '부산광역시', 대구: '대구광역시', 인천: '인천광역시', 광주: '광주광역시', 대전: '대전광역시', 울산: '울산광역시', 세종: '세종특별자치시', 경기: '경기도', 강원: '강원특별자치도', 충북: '충청북도', 충남: '충청남도', 전북: '전북특별자치도', 전남: '전라남도', 경북: '경상북도', 경남: '경상남도', 제주: '제주특별자치도' };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function nomi(q) {
+  const key = 'geo:' + q, hit = sessionStorage.getItem(key);
+  if (hit) return JSON.parse(hit);
+  if (qs.get('geo') === 'off') return null; // 검사용: 위치 변환 실패 흉내
+  const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=1&accept-language=ko&q=' + encodeURIComponent(q));
+  const j = await r.json(); const pt = j[0] ? [Number(j[0].lat), Number(j[0].lon)] : null;
+  sessionStorage.setItem(key, JSON.stringify(pt)); return pt;
+}
+async function geocodeTries(tries) {
+  for (let i = 0; i < tries.length; i++) {
+    if (i) await sleep(1100);
+    const pt = await nomi(tries[i]).catch(() => null);
+    if (pt) return { pt, q: tries[i] };
+  }
+  return null;
+}
+const fullSido = (a) => { const [h, ...t] = a.split(' '); return SIDO_FULL[h] ? [SIDO_FULL[h], ...t].join(' ') : null; };
+// 관리자 주소 저장: 정확한 주소로만(동네 단위로 대충 맞추지 않음) — 실패하면 «주소를 확인해 주세요»
+const geocodeAdmin = (addr) => geocodeTries([...new Set([addr, fullSido(addr), addr.split(',')[0].trim()].filter(Boolean))]);
+// 회원 이사 주소: 도로명 → 도로 → 지번 → 동 → 시군구 순으로 넓혀 가며 찾기(이사 갈 동네 근처면 충분)
+const geocodeMove = (dt) => { const sf = SIDO_FULL[dt.sido] || dt.sido; return geocodeTries([...new Set([dt.roadAddress, dt.roadname && `${sf} ${dt.sigungu} ${dt.roadname}`, dt.jibunAddress, dt.bname && `${sf} ${dt.sigungu} ${dt.bname}`, `${sf} ${dt.sigungu}`].filter(Boolean))]); };
 
 // ───────── 렌더 ─────────
 function render() {
@@ -56,7 +93,8 @@ function render() {
     case 'A1': h = A1(d, S.reason, S.etc, S.reason && !resolveOffer(S.reason, c, S.sub, seenNow())); break;
     case 'A2': h = A2(d, S.kind, S.reason, c, S.etc.trim()); break;
     case 'A3': h = A3(d, S.kind, c); break;
-    case 'A4': h = A4(d, moveBrs()); break;
+    case 'A4': h = A4(d, S.move.near, S.move.place, isMove()); break;
+    case 'A4s': h = A4s(d, S.move.busy); break;
     case 'A5': h = A5(d, LONG, pk); break;
     case 'A6': h = A6(d, pk); break;
     case 'K1': h = K1(d); break;
@@ -77,7 +115,13 @@ function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(20, t.
 function renderAdmin() {
   const adm = $('#adm'), d = DB();
   const ae = document.activeElement, fid = ae && ae.tagName === 'INPUT' && adm.contains(ae) ? ae.id : null, fpos = fid ? ae.selectionStart : null;
+  const bl = $('#blist'), blTop = bl ? bl.scrollTop : 0;
   adm.innerHTML = adminScreen(d, S.draft, S.ui);
+  if ($('#blist')) $('#blist').scrollTop = blTop;
+  $('#brq')?.addEventListener('input', (ev) => { S.ui.brq = ev.target.value; renderAdmin(); });
+  $('#brf')?.addEventListener('input', (ev) => { S.ui.brf = ev.target.value; renderAdmin(); });
+  $('#bre')?.addEventListener('input', (ev) => { S.ui.editV = ev.target.value; });
+  $('#bre')?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') ADM.brEditSave(); if (ev.key === 'Escape') ADM.brEditCancel(); });
   // 할인 칸에 오류가 있으면 미리보기는 마지막 저장값으로 보여준다(0원·초과 금액 화면을 만들지 않음)
   const e = adminErrors(d, S.draft);
   const center = e.disc ? { ...S.draft, disc: S.cfg.disc, discRaw: S.cfg.discRaw } : S.draft;
@@ -122,13 +166,14 @@ function stateText() {
   if (a) lines.push('— 마지막 cancel_request —',
     `reason_code   = ${a.reason}${a.reason_text ? ` («${a.reason_text.slice(0, 20)}${a.reason_text.length > 20 ? '…' : ''}»)` : ''}`,
     `offer_type    = ${a.offer_type || (a.offer_skipped ? `null (${a.offer_skipped})` : 'null')}`, `offer_accepted= ${a.offer_accepted}`, `result        = ${a.result || '(진행 중)'}`,
-    `withdrawn_via = ${a.withdrawn_via || 'null'}`, ...(a.info_branches ? [`info_branches = ${a.info_branches.join(', ')} (정보 안내만)`] : []));
+    `withdrawn_via = ${a.withdrawn_via || 'null'}`, ...(a.reason === 'move' ? [`move_search   = ${S.move.result || '(검색 전)'} · 이사 주소는 저장 안 함`] : []),
+    ...(a.info_branches ? [`info_branches = ${a.info_branches.join(', ')} (정보 안내만)`] : []));
   return lines.join('\n');
 }
 function renderPanel() {
   const set = (sel, v) => document.querySelectorAll(`${sel} button`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
   set('#p-mode', S.mode); set('#p-data', S.data); set('#p-seen', seenNow() ? '1' : '0'); set('#p-subs', S.subsN); set('#p-cur', S.subsN === 2 ? S.cur : ''); set('#p-vis', S.visits0 ? '0' : '12'); set('#p-feat', S.feature ? '1' : '0');
-  set('#p-preset', S.preset);
+  set('#p-preset', S.preset); set('#p-nbr', S.cfg.branches.length);
   set('#p-reason', S.screen === 'A2' || S.screen === 'A1' ? S.reason : '');
   $('#p-state').textContent = stateText();
   $('#p-log').textContent = S.log;
@@ -156,9 +201,14 @@ const ACT = {
   reserve() {
     const skipped = S.screen === 'A1' && seenNow();
     if (S.screen === 'A1') S.attempts.push({ product_id: S.cur, reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: null, offer_skipped: skipped ? 'already_seen' : null, offer_accepted: false, result: null, withdrawn_via: null });
-    const brs = moveBrs(); if (brs.length) cur().info_branches = brs.map((b) => b[0]);
     if (S.sub.status !== 'reserved') { S.sub.status = 'reserved'; cur().result = 'reserved'; }
-    S.log = (skipped ? '이 상품에서 이미 제안을 본 회원 → 제안 없이 바로 해지예약. ' : '') + '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.' + (brs.length ? ` 이사 → 완료 화면에 지점 ${brs.length}곳 안내(정보만).` : ''); go('A4');
+    S.move = newMove();
+    // 해지 예약을 먼저 저장하고 나서 주소 검색 → 회원이 건너뛰거나 앱을 꺼도 해지는 이미 끝난 상태
+    const step = isMove() && moveOK();
+    if (isMove() && !step) S.move.result = 'no_branches';
+    S.log = (skipped ? '이 상품에서 이미 제안을 본 회원 → 제안 없이 바로 해지예약. ' : '') + '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.'
+      + (step ? ' 이사 → 이사 갈 곳 주소 검색 단계(건너뛰어도 해지 예약 그대로).' : isMove() ? ' 이사 → 추천할 지점이 없어 해지 완료 안내만.' : '');
+    go(step ? 'A4s' : 'A4');
   },
   accept() {
     const k = S.kind, a = cur();
@@ -179,7 +229,33 @@ const ACT = {
   },
   otherCancel(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지] → 지금 앱 동작 그대로(회유 흐름 없음, 이 프로토타입엔 그 화면이 없어요).`; render(); },
   otherWithdraw(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지 철회] → 지금 앱 동작 그대로.`; render(); },
-  viewBranch(el) { S.log = `[지점 보기] ${moveBrs()[el.dataset.i][0]} 센터 상세로 이동(해지 예약은 그대로, 상태 변화 없음).`; render(); },
+  viewBranch(el) { S.log = `[지점 보기] ${S.move.near[el.dataset.i].n} 센터 상세로 이동(해지 예약은 그대로 reserved, 상태 변화 없음).`; render(); },
+  skipMove() { S.move = { ...newMove(), result: 'skipped' }; S.log = '주소 검색 건너뜀 → 해지 완료 안내만(해지 예약 그대로).'; go('A4'); },
+  reSearch() { S.move.busy = false; go('A4s'); },
+  openSearch() {
+    if (S.move.busy || $('#pcl')) return;
+    $('#app').insertAdjacentHTML('beforeend', PCL);
+    loadPostcode().then(() => {
+      if (!$('#pcw')) return;
+      new window.daum.Postcode({ width: '100%', height: '100%', maxSuggestItems: 5, oncomplete: (dt) => ACT.pickAddr(dt) }).embed($('#pcw'), { autoClose: false });
+    }).catch(() => { $('#pcw').innerHTML = '<div class="pcerr">주소 검색을 불러오지 못했어요. 닫고 [건너뛰기]를 눌러도 해지 예약은 그대로예요.</div>'; });
+  },
+  closeSearch() { $('#pcl')?.remove(); },
+  // 카카오 우편번호 서비스에서 주소를 고르면 → 위치로 바꾸고 → 등록 지점 중 가까운 순 5곳
+  async pickAddr(dt) {
+    ACT.closeSearch();
+    const place = dt.roadAddress || dt.jibunAddress || dt.address;
+    S.move.busy = true; S.log = `주소 고름: ${place} → 위치 찾는 중…`; render();
+    const g = await geocodeMove(dt);
+    ACT.setMovePt(place, g && g.pt, g && g.q);
+  },
+  setMovePt(place, pt, q) {
+    const near = pt ? nearest(curCfg().branches, pt, 5) : [];
+    S.move = { ...newMove(), place, pt, near, result: !pt ? 'geocode_failed' : near.length ? `found ${near.length}` : 'no_branches' };
+    if (near.length) cur().info_branches = near.map((b) => b.n); else delete cur().info_branches;
+    S.log = !pt ? `«${place}» 위치를 찾지 못함 → 추천 없이 해지 완료 안내만.` : `«${place}»${q && q !== place ? ` (위치 기준: ${q})` : ''} → 가까운 ${near.length}곳: ${near.map((b) => `${b.n} ${fmtKm(b.km)}`).join(' · ')}`;
+    if (S.screen === 'A4s' || S.screen === 'A4') go('A4'); else render();
+  },
   hideToast() { S.toast = false; $('.toast')?.classList.add('gone'); },
   kakaoWithdraw() { S.k2 = { reserved: 'ask', ended: 'ended' }[S.sub.status] || 'done'; S.log = S.k2 === 'ended' ? '해지예정일이 지난 뒤 연 링크 → «이미 종료된 구독이에요» 안내만(구매·결제 화면으로 보내지 않음).' : '알림톡 [구독해지 철회하기] → 앱 로그인 확인 → 철회 페이지(결제 기능 없음). 링크를 연 것만으로는 철회 안 됨.'; go('K2'); },
   kakaoConfirm() {
@@ -191,14 +267,33 @@ const ACT = {
 };
 
 // ───────── 관리자 동작 ─────────
+function addBranches(list) {
+  const room = BR_MAX - S.draft.branches.length, add = list.slice(0, Math.max(0, room)).map((b) => [...b]);
+  S.draft.branches.push(...add); S.ui.brq = ''; renderAdmin();
+  add.filter((b) => !hasPt(b)).forEach(async (b) => { b[4] = 'checking'; renderAdmin(); const g = await geocodeAdmin(b[1]); b[2] = g ? g.pt[0] : null; b[3] = g ? g.pt[1] : null; b.length = 4; renderAdmin(); });
+}
+function setNbr(n) {
+  for (const c of [S.cfg, S.draft]) { c.branches = pickBr(DB(), n); if (n) c.move_on = true; }
+}
 const ADM = {
   sw(el) { const k = el.dataset.k; S.draft[k] = !S.draft[k]; if (k === 'move_on' && S.draft.move_on && !S.draft.branches.length) S.draft.branches = D().branchPool.slice(0, 1); renderAdmin(); },
   eff(el) { S.draft.eff_kind = el.dataset.v; renderAdmin(); },
-  brDel(el) { S.draft.branches.splice(Number(el.dataset.i), 1); renderAdmin(); },
-  brAdd() {
-    if (S.draft.branches.length >= 3) return;
-    const have = new Set(S.draft.branches.map((b) => b[0]));
-    const nb = D().branchPool.find((b) => !have.has(b[0])); if (nb) S.draft.branches.push([...nb]); renderAdmin();
+  brDel(el) { S.draft.branches.splice(Number(el.dataset.i), 1); S.ui.editI = null; renderAdmin(); },
+  // 니짐내짐 센터 검색으로 추가 — 센터 주소는 등록 때 이미 위치로 바뀌어 있다(위치가 없는 센터면 추가하면서 변환)
+  brAddOne(el) { addBranches(D().branchPool.filter((b) => b[0] === el.dataset.k)); },
+  brAddAll() { const q = S.ui.brq.trim(), have = new Set(S.draft.branches.map((b) => b[0])); addBranches(D().branchPool.filter((b) => !have.has(b[0]) && (b[0].includes(q) || b[1].includes(q)))); },
+  brEdit(el) { S.ui.editI = Number(el.dataset.i); S.ui.editV = null; renderAdmin(); $('#bre')?.focus(); },
+  brBad() { S.ui.brBad = !S.ui.brBad; renderAdmin(); },
+  brEditCancel() { S.ui.editI = null; renderAdmin(); },
+  async brEditSave() {
+    const i = S.ui.editI, b = S.draft.branches[i], v = (S.ui.editV ?? b[1]).trim();
+    if (!v) return;
+    S.ui.editI = null; b[1] = v; b[2] = b[3] = null; b[4] = 'checking'; renderAdmin();
+    const g = await geocodeAdmin(v);
+    if (S.draft.branches[i] !== b) return;
+    b[2] = g ? Number(g.pt[0].toFixed(6)) : null; b[3] = g ? Number(g.pt[1].toFixed(6)) : null; b.length = 4;
+    if (!S.draft.branches.some((x) => !hasPt(x))) S.ui.brBad = false;
+    S.ui.savedAt = g ? `${b[0]} 주소를 위치로 바꿔 저장했어요` : `${b[0]}: 주소를 확인해 주세요(위치로 바꾸지 못함 · 추천에서 빠져요)`; renderAdmin();
   },
   pv(el) { S.ui.pvI = Number(el.dataset.i); renderAdmin(); },
   tab(el) { S.ui.tab = el.dataset.v; renderAdmin(); },
@@ -235,6 +330,7 @@ const PANEL = {
   cur(v) { if (S.subsN !== 2) S.subsN = 2; useSub(v); S.mode = 'app'; S.scrollTop = 0; S.screen = S.sub.status === 'reserved' ? 'A5' : 'A0'; S.log = `보는 구독 → ${D().product}`; render(); },
   feat(v) { S.feature = v === '1'; S.log = S.feature ? '' : '기능 꺼짐: [구독해지]를 누르면 지금 앱 동작 그대로(회유 화면 없음).'; render(); },
   preset(v) { S.preset = v; S.cfg = mkCfg(v); S.draft = clone(S.cfg); S.ui.savedAt = SAVED0; render(); },
+  nbr(v) { setNbr(Number(v)); S.log = `이사 추천 지점 ${v}곳 등록(센터 기본 · 저장된 값)`; if (S.mode === 'app' && (S.screen === 'A4s' || (S.screen === 'A4' && isMove()))) return PANEL.reason('move'); render(); },
   reason(v) {
     if (S.sub.status !== 'active') { S.subs[S.cur] = newSub(); useSub(S.cur); }
     S.mode = 'app'; S.screen = 'A1'; S.reason = v; S.etc = v === 'etc' ? D().etc_text : '';
@@ -280,7 +376,9 @@ const GO = {
   'A2-2': () => { PANEL.preset('all'); PANEL.reason('busy'); },
   'A2-2b': () => PANEL.reason('busy'),
   'A2-3': () => { PANEL.preset('all'); PANEL.reason('move'); },
-  A4m: () => { PANEL.preset('all'); PANEL.reason('move'); ACT.reserve(); },
+  A4s: () => { PANEL.preset('all'); PANEL.reason('move'); ACT.reserve(); },
+  A4m: () => { GO.A4s(); ACT.setMovePt('서울 강남구 테헤란로 152', [37.500019, 127.036548]); },
+  A4m0: () => { PANEL.preset('all'); setNbr(0); PANEL.reason('move'); ACT.reserve(); },
   'A2-4': () => PANEL.reason('effect'),
   'A2-4b': () => { PANEL.preset('inbody'); PANEL.reason('effect'); },
   'A2-5': () => PANEL.reason('etc'),
@@ -315,6 +413,12 @@ const g = qs.get('go');
 if (g && GO[g]) GO[g]();
 // 시안 긴 값 화면과 같은 조건으로 맞출 때만 쓰는 값(할인 금액·안내 지점 수)
 if (qs.get('disc')) for (const c of [S.cfg, S.draft]) { c.disc = Number(qs.get('disc')); c.discRaw = c.disc.toLocaleString('ko-KR'); }
-if (qs.get('nbr')) for (const c of [S.cfg, S.draft]) c.branches = DB().branchPool.slice(0, Number(qs.get('nbr')));
+if (qs.get('nbr')) setNbr(Number(qs.get('nbr')));
 render();
-window.__proto = { S, ACT, PANEL, ADM, resolveOffer, render, curCfg, seenNow, D, DB };
+window.__proto = { S, ACT, PANEL, ADM, resolveOffer, render, curCfg, seenNow, D, DB, setNbr, nearest, distKm };
+// 카카오 우편번호 서비스(키 필요 없음) — 이사 주소 검색 창을 처음 열 때만 불러온다
+let pcP = null;
+function loadPostcode() {
+  if (window.daum && window.daum.Postcode) return Promise.resolve();
+  return pcP ||= new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'; sc.onload = ok; sc.onerror = () => { pcP = null; no(); }; document.head.appendChild(sc); });
+}

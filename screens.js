@@ -3,6 +3,7 @@
 // v1.2(10-23): K1 알림톡 = 카카오 정보성 검수 수정본(금액·정가·재가입 문장 삭제), 알림톡 [구독해지 철회하기] → K2 철회 페이지(결제 기능 없음).
 // v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
+// v1.5(11-17): «이사» = 해지 예약 저장 → 이사 갈 주소 검색(카카오 우편번호) → 등록 지점 중 직선거리 가까운 순 5곳. 관리자 추천 지점 최대 100곳·주소→위치 저장(README_SPEC 19번).
 'use strict';
 const won = (n) => `${n.toLocaleString('ko-KR')}원`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,7 +15,7 @@ const BASE = {
   visits: 12, period: '10월 1일~23일', days_left: 22, daily: '하루 2회 이용가능(1/2)', open_msg: '오후 11시 30분 영업종료',
   others: [{ name: '개인락커', period: '2026.10.15 ~ 2026.11.14', extra: ['자리정보', 'A302'], fee: 5000, due: false }],
   pay: ['토스체크카드', '체크 9230', '토스뱅크청소년맞춤 할인혜택 팡팡 카드'], peek: '니짐이내짐 휘트니스',
-  branchPool: [['엔짐 답십리점', '서울 동대문구 답십리로 78'], ['엔짐 신도림점', '서울 구로구 경인로 662'], ['엔짐 목동점', '서울 양천구 목동동로 257']],
+  branchPool: BRANCH_POOL, // v1.5: 니짐내짐 센터 검색에 나오는 지점(이름·주소·위도·경도) — branches.js
   etc_text: '주차가 너무 불편해서요.',
 };
 const STRESS = {
@@ -24,7 +25,7 @@ const STRESS = {
     { name: '운동복 대여 서비스(상하의 세트 + 수건 2장 무제한 교체)', period: '2026.10.15 ~ 2026.11.14', extra: null, fee: 1290000, due: true },
     { name: '월정기 주차권(지하 2층 기계식 주차장 · SUV 불가)', period: '2026.10.15 ~ 2026.11.14', extra: ['차량번호', '123가 4567'], fee: 1290000, due: false }],
   pay: ['삼성카드 taptap O 모바일 단독 프리미엄 에디션 체크카드', '신용 1234', '삼성카드 taptap O 모바일 단독 프리미엄 에디션 · 통신·스트리밍·편의점 할인'],
-  branchPool: [['엔짐 경기도 고양시 일산동구 라페스타 프리미엄 피트니스점', '경기 고양시 일산동구 중앙로 1305번길 14, 라페스타 B동 지하 2층'], ['엔짐 답십리점', '서울 동대문구 답십리로 78'], ['엔짐 영등포점', '서울 영등포구 영중로 15']],
+  branchPool: [['엔짐 경기도 고양시 일산동구 라페스타 프리미엄 피트니스점', '경기 고양시 일산동구 중앙로 1305번길 14, 라페스타 B동 지하 2층', 37.6597, 126.7706], ...BRANCH_POOL],
   etc_text: '회사 근무 시간이 매주 바뀌는 교대 근무로 바뀌어서 정해진 시간에 운동하기가 어렵고, 집에서 센터까지 거리도 멀어서 당분간은 홈트로 해 보려고 합니다.',
 };
 // 형 예시 긴 값(시안 v3 LONGNAME): 긴 이름 + 긴 지점명, 금액은 보통
@@ -226,21 +227,43 @@ function A3(d, kind, cfg) {
 }
 
 // ───────── A4 해지예약 완료 ─────────
-// brs: 이유 «이사»이고 센터가 지점을 골라 뒀을 때만(1~3곳). 해지를 붙잡지 않는 정보 안내 — 어떤 버튼도 해지예약을 바꾸지 않는다(README_SPEC 18번).
-const brInfo = (d, brs) => `<div class="mv"><div class="lt">이사 가는 곳 가까이 이런 지점이 있어요</div><div class="box">`
-  + brs.map(([n, a], i) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0;flex:1"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div><span class="see" data-act="viewBranch" data-i="${i}">지점 보기</span></div>`).join('')
-  + `</div><div class="ms">${esc(d.center)}에서 안내하는 지점이에요. 새로 이용하는 방법은 지점에서 안내해 드려요.</div></div>`;
-const A4 = (d, brs = []) => SB + hdr('', false) + scr(91, '<div class="done">'
+// v1.5(11-17): 이사 = 해지 예약 저장 → A4s «이사 갈 곳 주소 검색» → A4 가까운 순 5곳. 주소 검색은 해지 예약이 저장된 뒤라 건너뛰거나 앱을 꺼도 해지는 그대로(README_SPEC 19번).
+// 거리 = 두 좌표의 직선거리(하버사인). 좌표 없는 지점(주소 변환 실패)은 추천에서 뺀다.
+const distKm = (p, q) => {
+  const R = 6371, rad = (x) => x * Math.PI / 180, dLat = rad(q[0] - p[0]), dLng = rad(q[1] - p[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(p[0])) * Math.cos(rad(q[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+const fmtKm = (k) => k < 1 ? `${Math.max(10, Math.round(k * 100) * 10)}m` : k < 10 ? `${k.toFixed(1)}km` : `${Math.round(k).toLocaleString('ko-KR')}km`;
+const hasPt = (b) => typeof b[2] === 'number' && typeof b[3] === 'number';
+const nearest = (brs, pt, n = 5) => brs.filter(hasPt).map((b) => ({ n: b[0], a: b[1], km: distKm(pt, [b[2], b[3]]) })).sort((x, y) => x.km - y.km).slice(0, n);
+const I_SEARCH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>';
+// A4s 이사 갈 곳 주소 검색 — 해지 예약은 이미 저장됨. [건너뛰기] = 추천 없이 완료 화면.
+const A4s = (d, busy = false) => SB + hdr('', false) + scr(91, '<div class="done mvs">'
+  + `<div class="rsvd">${ic('check', '#1BB47C', 16, 2.6)}<span>해지 예약이 완료됐어요 · ${d.use_end_md}까지 지금처럼 이용할 수 있어요</span></div>`
+  + '<div class="h1">이사 갈 곳 근처<br>지점을 찾아 드릴까요?</div>'
+  + '<div class="p">동네 이름이나 도로명으로 검색하면 가까운 지점 5곳을 알려 드려요.</div>'
+  + `<div class="sfield${busy ? ' busy' : ''}" data-act="openSearch" role="button">${I_SEARCH}<span>${busy ? '가까운 지점을 찾고 있어요…' : '예) 판교역로 146, 백현동'}</span></div>`
+  + '<div class="ms">검색하지 않아도 해지 예약은 그대로예요. 이사 갈 주소는 지점을 찾는 데만 쓰고 저장하지 않아요.</div><div class="end"></div></div>', 120)
+  + '<div class="stack solid"><div class="btn line" data-act="skipMove">건너뛰기</div></div>';
+// near: [{n, a, km}] 가까운 순(최대 5곳), place: 회원이 고른 주소. 해지를 붙잡지 않는 정보 안내 — 어떤 버튼도 해지예약을 바꾸지 않는다.
+const brInfo = (d, near, place) => `<div class="mv"><div class="lt">이사 갈 곳에서 가까운 지점이에요</div><div class="mvq">${ic('mappin', '#6B6B73', 14)}<span>${esc(place)}</span></div><div class="box">`
+  + near.map((b, i) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0;flex:1"><div class="n">${esc(b.n)}</div><div class="a">${esc(b.a)}</div></div><div class="rt"><span class="km">${fmtKm(b.km)}</span><span class="see" data-act="viewBranch" data-i="${i}">지점 보기</span></div></div>`).join('')
+  + `</div><div class="ms">직선거리 기준 가까운 순이에요 · <span class="lnk" data-act="reSearch">주소 다시 검색</span><br>${esc(d.center)}에서 안내하는 지점이에요. 새로 이용하는 방법은 지점에서 안내해 드려요.</div></div>`;
+// mv: 이사 사유로 해지 예약한 회원(추천이 있든 없든 같은 제목) · near/place: 주소 검색으로 찾은 가까운 지점
+const A4 = (d, near = [], place = '', mv = false) => SB + hdr('', false) + scr(91, '<div class="done">'
   + `<div class="ok">${ic('cal', '#202024', 26)}</div>`
-  + (brs.length ? `<div class="h1">해지 예약이 완료됐어요</div><div class="what">${d.use_end_md}까지는 지금처럼 이용할 수 있어요.<br>${esc(d.center)} · ${esc(d.product)}</div>`
+  + (mv ? `<div class="h1">해지 예약이 완료됐어요</div><div class="what">${d.use_end_md}까지는 지금처럼 이용할 수 있어요.<br>${esc(d.center)} · ${esc(d.product)}</div>`
     : `<div class="h1">해지 예약됐어요</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>`)
   + `<div class="box"><div class="kv"><span class="k">이용</span><span class="v">${d.use_end_md}까지 지금처럼</span></div>`
   + `<div class="kv"><span class="k">해지예정일</span><span class="v">${d.next_dot}</span></div>`
   + '<div class="kv"><span class="k">다음 결제</span><span class="v">없음</span></div>'
   + `<div class="kv"><span class="k">알림</span><span class="v">${d.alarm_md} 카카오 알림톡</span></div></div>`
-  + (brs.length ? brInfo(d, brs) : '')
-  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.use_end_md}까지 언제든</b> 내 멤버십의 <b>[구독해지 철회]</b>로 되돌릴 수 있어요. 철회하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, brs.length ? 176 : 158)
-  + `<div class="stack${brs.length ? ' solid' : ''}"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">구독해지 철회</div></div>`;
+  + (near.length ? brInfo(d, near, place) : '')
+  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.use_end_md}까지 언제든</b> 내 멤버십의 <b>[구독해지 철회]</b>로 되돌릴 수 있어요. 철회하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, mv ? 176 : 158)
+  + `<div class="stack${mv ? ' solid' : ''}"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">구독해지 철회</div></div>`;
+// 주소 검색 창(폰 화면 전체 덮음, 카카오 우편번호 서비스를 안에 붙임) — 위쪽에 검색칸이 있어 키보드에 가리지 않는다
+const PCL = '<div class="pcl" id="pcl"><div class="pch"><span>이사 갈 곳 주소 검색</span><span class="x" data-act="closeSearch">닫기</span></div><div class="pcw" id="pcw"></div></div>';
 
 // ───────── K1 알림톡(해지예정 3일 전) ─────────
 const KAKAO_CSS = `<style>
@@ -322,7 +345,48 @@ function discError(raw, maxExcl, own = false) {
   if (n % 1000) return '1,000원 단위로 입력해 주세요.';
   return null;
 }
-const brError = (cfg) => cfg.move_on && !cfg.branches.length ? '지점을 1곳 이상 골라 주세요. 안내할 지점이 없으면 이 제안을 꺼 주세요.' : null;
+// ───────── v1.5 관리자 3번 «추천할 지점» (최대 100곳) ─────────
+// 지점 = [이름, 주소, 위도, 경도, 상태]. 상태 'checking' = 주소→좌표 변환 중, 위도·경도 null = 변환 실패(추천에서 빠짐).
+const BR_MAX = 100;
+const brKey = (b) => b[0];
+const brStat = (b) => b[4] === 'checking' ? '<span class="chip">위치 확인 중…</span>'
+  : hasPt(b) ? '<span class="chip ok">위치 저장됨</span>' : '<span class="chip bad">주소를 확인해 주세요 · 추천에서 빠져요</span>';
+function moveBranchesField(d, cfg, e, ui) {
+  const brs = cfg.branches, n = brs.length, bad = brs.filter((b) => !hasPt(b) && b[4] !== 'checking').length;
+  const q = (ui.brq || '').trim(), f = (ui.brf || '').trim();
+  const onlyBad = ui.brBad && bad > 0;
+  const have = new Set(brs.map(brKey));
+  let add;
+  if (n >= BR_MAX) add = `<div class="bfull">${BR_MAX}곳까지 등록할 수 있어요. 다른 지점을 넣으려면 목록에서 먼저 빼 주세요.</div>`;
+  else {
+    const hits = q ? d.branchPool.filter((b) => !have.has(brKey(b)) && (b[0].includes(q) || b[1].includes(q))) : [];
+    add = `<div class="in bq">${I_SEARCH}<input id="brq" value="${esc(ui.brq || '')}" placeholder="니짐내짐 센터 이름이나 주소로 검색해서 추가 (예: 강남, 부산)" autocomplete="off"></div>`
+      + (q ? `<div class="bhits">${hits.length ? hits.slice(0, 6).map((b) => `<div class="bh"><div style="min-width:0;flex:1"><div class="n">${esc(b[0])}</div><div class="a">${esc(b[1])}</div></div><span class="b sec sm" data-act="brAddOne" data-k="${esc(b[0])}">추가</span></div>`).join('')
+        + (hits.length > 6 ? `<div class="bmore">${hits.length - 6}곳 더 있어요 · 검색어를 더 적어 주세요 <span class="lnk" data-act="brAddAll">검색된 ${Math.min(hits.length, BR_MAX - n)}곳 모두 추가</span></div>` : '')
+        : '<div class="bmore">검색 결과가 없어요. 이미 추가한 지점은 목록에 있어요.</div>'}</div>` : '');
+  }
+  const idx = brs.map((b, i) => i).filter((i) => (!f || brs[i][0].includes(f) || brs[i][1].includes(f)) && (!onlyBad || !hasPt(brs[i])));
+  const rows = idx.map((i) => {
+    const b = brs[i];
+    if (ui.editI === i) {
+      return `<div class="brr ed"><span class="no">${i + 1}</span><div style="min-width:0;flex:1"><div class="n">${esc(b[0])}</div>`
+        + `<div class="in sm"><input id="bre" value="${esc(ui.editV ?? b[1])}" aria-label="${esc(b[0])} 주소"></div><div class="hint">저장하면 주소를 위치(위도·경도)로 바꿔 저장해요.</div></div>`
+        + '<span class="b pri sm" data-act="brEditSave">저장</span><span class="b sec sm" data-act="brEditCancel">취소</span></div>';
+    }
+    return `<div class="brr${hasPt(b) || b[4] === 'checking' ? '' : ' bad'}"><span class="no">${i + 1}</span><div style="min-width:0;flex:1"><div class="n">${esc(b[0])}</div><div class="a">${esc(b[1])}</div></div>`
+      + `${brStat(b)}<span class="x" data-act="brEdit" data-i="${i}">주소 고치기</span><span class="x" data-act="brDel" data-i="${i}">빼기</span></div>`;
+  }).join('');
+  return `<div class="f"><div class="lb">추천할 지점 <span class="chip req">필수</span><span style="font-weight:500;color:var(--text3);font-size:12px">최대 ${BR_MAX}곳 · ${n}/${BR_MAX}</span></div>`
+    + `<div class="badd">${add}</div>`
+    + (n ? `<div class="bbar"><div class="in sm bf">${I_SEARCH}<input id="brf" value="${esc(ui.brf || '')}" placeholder="등록한 지점에서 찾기" autocomplete="off"></div>`
+      + `<span class="bsum">위치 저장 <b>${n - bad}</b>곳${bad ? ` · <b class="e">주소 확인 필요 ${bad}곳</b> <span class="lnk" data-act="brBad">${onlyBad ? '전체 보기' : '확인 필요만 보기'}</span>` : ''}${f || onlyBad ? ` · 보이는 지점 ${idx.length}곳` : ''}</span></div>`
+      + `<div class="blist" id="blist">${rows || '<div class="bmore">찾는 지점이 목록에 없어요.</div>'}</div>` : '')
+    + (e.br ? `<div class="errt">${ERR}${e.br}</div>` : '')
+    + (bad ? `<div class="errt">${ERR}주소를 위치로 바꾸지 못한 지점 ${bad}곳은 회원에게 추천되지 않아요. [주소 고치기]로 도로명 주소를 확인해 주세요.</div>` : '')
+    + '<div class="hint">지점을 추가하거나 주소를 고치면 주소를 <b>위치(위도·경도)</b>로 바꿔 저장해요. 회원이 이사 갈 주소를 검색하면 이 목록에서 <b>가까운 순으로 5곳</b>을 보여 줘요(직선거리).</div></div>'
+    + '<div class="fall" style="margin-top:10px">이사를 고른 회원은 붙잡지 않고 <b>바로 해지 예약</b>돼요. 해지 예약이 끝난 뒤 이사 갈 주소를 검색하면 가까운 지점을 안내만 해요(건너뛰어도 돼요).</div>';
+}
+const brError = (cfg) => cfg.move_on && !cfg.branches.length ? '지점을 1곳 이상 추가해 주세요. 안내할 지점이 없으면 이 제안을 꺼 주세요.' : null;
 const following = (d, cfg) => products(d).filter((p) => !cfg.own[p.id]);
 // 따로 설정한 상품은 센터 기본 상한 계산에서 뺀다. 모두 따로 설정이면 새 상품에만 쓰이므로 상한 없음.
 const minFollow = (d, cfg) => { const f = following(d, cfg); return f.length ? Math.min(...f.map((p) => p.p)) : Infinity; };
@@ -344,7 +408,7 @@ function adminTabs(d, cfg, tab) {
   return `<div class="tabs2"><span class="${tab === 'center' ? 'on' : ''}" data-act="tab" data-v="center">센터 기본 설정</span>`
     + `<span class="${tab === 'prod' ? 'on' : ''}" data-act="tab" data-v="prod">상품별 설정 <span class="n">${products(d).length}개 중 따로 ${ownN(cfg)}</span></span></div>`;
 }
-function centerCards(d, cfg, e) {
+function centerCards(d, cfg, e, ui) {
   const FALL = cfg.keep_on ? '<div class="fall">꺼져 있어요. 이 이유를 고른 회원에겐 <b>5번 «지금 가격 유지 안내»</b>를 보여줘요.</div>'
     : '<div class="fall">꺼져 있어요. 5번도 꺼져 있어서 이 이유를 고른 회원은 <b>제안 없이 바로 해지 예약</b>돼요.</div>';
   const min = minFollow(d, cfg);
@@ -363,14 +427,9 @@ function centerCards(d, cfg, e) {
   }
   const c2 = adminCard(2, 'skip_on', '바빠서 갈 시간이 없어요 · 다쳐서 쉬어야 해요 · 여행·출장을 가요', '한 달 쉬어가기 (결제 1회 건너뛰기)', cfg.skip_on, b2);
   let b3;
-  if (cfg.move_on) {
-    const brs = cfg.branches.map(([n, a], i) => `<div class="brr"><div style="min-width:0"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div><span class="x" data-act="brDel" data-i="${i}">빼기</span></div>`).join('');
-    b3 = `<div class="f"><div class="lb">안내할 지점 <span class="chip req">필수</span><span style="font-weight:500;color:var(--text3);font-size:12px">1~3곳 · ${cfg.branches.length}/3</span></div>`
-      + `<div class="brs">${brs}<div class="add${e.br ? ' bad' : ''}" data-act="brAdd">+ 지점 추가 (니짐내짐 센터 검색)</div></div>`
-      + (e.br ? `<div class="errt">${ERR}${e.br}</div>` : '<div class="hint">회원 화면엔 지점 이름·주소만 보여요. 지점을 옮겨 이용하는 방법은 각 지점이 안내해요.</div>') + '</div>'
-      + '<div class="fall" style="margin-top:10px">이사를 고른 회원은 붙잡지 않고 <b>바로 해지 예약</b>돼요. 해지 예약 완료 화면에 위 지점을 안내만 해요.</div>';
-  } else b3 = '<div class="fall">꺼져 있어요. 이사를 고른 회원은 지점 안내 없이 <b>바로 해지 예약</b>돼요.</div>';
-  const c3 = adminCard(3, 'move_on', '이사를 가요', '해지 진행 + 가까운 지점 안내', cfg.move_on, b3);
+  if (cfg.move_on) b3 = moveBranchesField(d, cfg, e, ui || {});
+  else b3 = '<div class="fall">꺼져 있어요. 이사를 고른 회원은 지점 안내 없이 <b>바로 해지 예약</b>돼요.</div>';
+  const c3 = adminCard(3, 'move_on', '이사를 가요', '해지 진행 + 이사 갈 곳 가까운 지점 5곳 안내', cfg.move_on, b3);
   let b4 = FALL;
   if (cfg.eff_on) {
     const k = cfg.eff_kind;
@@ -437,7 +496,7 @@ function adminScreen(d, cfg, ui) {
     const f = following(d, cfg);
     const scope = `<div class="scope"><span>이 설정이 적용되는 상품 <b>${f.length}개</b> / 구독 상품 ${P.length}개 · 새로 만든 구독 상품도 자동으로 적용돼요.</span>`
       + (ownN(cfg) ? `<span class="lnk" data-act="tab" data-v="prod">따로 설정한 상품 ${ownN(cfg)}개 보기</span>` : '') + '</div>';
-    body = top + warn + adminTabs(d, cfg, tab) + scope + RULE_NOTICE(10) + `<div class="wrap"><div>${centerCards(d, cfg, e)}</div>${pv}</div>`;
+    body = top + warn + adminTabs(d, cfg, tab) + scope + RULE_NOTICE(10) + `<div class="wrap"><div>${centerCards(d, cfg, e, ui)}</div>${pv}</div>`;
   } else {
     const [a, b] = summ(cfg);
     const t2 = '<div class="notice"><b>상품마다 «이 상품만 따로 설정»을 켜면 할인 금액과 쉬어가기를 그 상품에만 따로 정할 수 있어요.</b> '
@@ -451,11 +510,13 @@ function adminScreen(d, cfg, ui) {
 }
 // 미리보기 탭 → 그 이유를 고른 회원이 보게 될 화면(제안 없으면 A1 «바로 해지 예약»)
 const PV_REASON = ['price', 'busy', 'move', 'effect', 'etc'];
+// 관리자 미리보기 «이사» 탭 = 이 주소로 이사 가는 회원 예시(가까운 5곳은 지금 목록으로 계산)
+const PV_PLACE = '서울 강남구 테헤란로 152', PV_PT = [37.500019, 127.036548];
 function previewHTML(d, cfg, pvI) {
   const onN = ['price_on', 'skip_on', 'move_on', 'eff_on', 'keep_on'].filter((k) => cfg[k]).length;
   const reason = pvI < 0 || onN === 0 ? 'busy' : PV_REASON[pvI];
   const kind = resolveOffer(reason, cfg, null, null);
-  const inner = kind ? A2(d, kind, reason, cfg, reason === 'etc' ? d.etc_text : '') : reason === 'move' && cfg.move_on ? A4(d, cfg.branches) : A1(d, reason, '', true);
+  const inner = kind ? A2(d, kind, reason, cfg, reason === 'etc' ? d.etc_text : '') : reason === 'move' && cfg.move_on ? A4(d, nearest(cfg.branches, PV_PT), PV_PLACE, true) : A1(d, reason, '', true);
   return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">'
     + '<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="proto.css"></head><body class="pvbody"><div class="phone">' + inner + '</div></body></html>';
 }

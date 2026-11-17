@@ -18,6 +18,8 @@
   <div class="seg r" id="p-reason" data-g="reason"><button data-v="price">가격 부담</button><button data-v="busy">바빠서</button><button data-v="hurt">다쳐서</button><button data-v="trip">여행·출장</button><button data-v="move">이사</button><button data-v="effect">효과 없음</button><button data-v="etc">기타</button></div></div>
   <div><div class="lb">센터 기본 설정 (기본=쉬어가기 끔·PT · 상품별 따로 설정은 관리자 화면 «상품별 설정» 탭에서 바꾸고 [저장])</div>
   <div class="seg h" id="p-preset" data-g="preset"><button data-v="b1">기본(B1)</button><button data-v="all">모두 켬·PT</button><button data-v="inbody">모두 켬·인바디</button><button data-v="off">모두 끔</button></div></div>
+  <div><div class="lb">이사 추천 지점 수 (센터 기본 · 저장된 값)</div>
+  <div class="seg" id="p-nbr" data-g="nbr"><button data-v="0">0곳</button><button data-v="3">3곳</button><button data-v="24">24곳</button><button data-v="100">100곳</button></div></div>
   <div class="app-only"><div class="lb">날짜 이동 (오늘 10/23 → 11/12 알림톡 → 11/15 결제일)</div>
   <div class="seg" id="p-time" data-g="time"><button data-v="k1">3일 전 알림톡</button><button data-v="pay">결제일 11/15</button><button data-v="reset">처음부터</button></div></div>
   <div><div class="lb">값</div>
@@ -34,6 +36,7 @@
 </div>
 <div class="phone" id="app"></div>
 <div class="adm" id="adm"></div>
+<script src="branches.js"></script>
 <script src="screens.js"></script>
 <script src="app.js"></script>
 </body>

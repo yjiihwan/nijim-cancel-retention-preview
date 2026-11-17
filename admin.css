@@ -121,3 +121,32 @@
 .adm .tabs2 span[data-act]{cursor:pointer}
 @media (max-width:1360px){.adm .pr{grid-template-columns:minmax(0,1fr) 168px;row-gap:8px}.adm .pr .pn{grid-column:1}.adm .pr .ps{grid-column:1;grid-row:2}.adm .pr .pw{grid-column:2;grid-row:1/3}
 .adm .plh{grid-template-columns:minmax(0,1fr) 168px}.adm .plh span:nth-child(2){display:none}.adm .ped .rw{grid-template-columns:150px minmax(0,1fr)}}
+/* v1.5(11-17) 3번 이사 · 추천할 지점 최대 100곳 */
+.adm .chip.bad{background:#FDECEC;color:var(--err)}
+.adm .b.sm{height:30px;padding:0 12px;font-size:13px;border-radius:7px}
+.adm .in.sm{height:34px;font-size:13px;font-weight:500}
+.adm .in input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:var(--text)}
+.adm .in.bq{font-size:14px;font-weight:500}
+.adm .bhits{border:1px solid var(--line2);border-radius:8px;margin-top:6px;background:#fff;overflow:hidden}
+.adm .bh{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--line)}
+.adm .bh:first-child{border-top:0}
+.adm .bh .n,.adm .brr .n{font-size:14px;font-weight:600;line-height:20px}
+.adm .bh .a{font-size:12px;color:var(--text2);line-height:17px}
+.adm .bmore{font-size:12px;color:var(--text2);padding:9px 12px;line-height:17px;border-top:1px solid var(--line)}
+.adm .bmore:first-child{border-top:0}
+.adm .bfull{font-size:13px;color:#7A5A00;background:#FFF8E6;border:1px solid #F3DFA8;border-radius:8px;padding:9px 12px;line-height:19px}
+.adm .bbar{display:flex;align-items:center;gap:12px;margin-top:12px}
+.adm .bbar .bf{width:260px;flex:none}
+.adm .bsum{font-size:12px;color:var(--text2)}
+.adm .bsum b{color:var(--text)}
+.adm .bsum b.e{color:var(--err)}
+.adm .blist{margin-top:8px;max-height:432px;overflow-y:auto;border:1px solid var(--line2);border-radius:8px;background:#fff}
+.adm .blist .brr{border:0;border-radius:0;border-top:1px solid var(--line);padding:8px 12px}
+.adm .blist .brr:first-child{border-top:0}
+.adm .blist .brr.bad{background:#FFFAFA}
+.adm .blist .brr.ed{background:var(--fill2);align-items:flex-start}
+.adm .blist .brr.ed .in{margin-top:4px}
+.adm .brr .no{width:26px;flex:none;font-size:12px;color:var(--text3);font-variant-numeric:tabular-nums;text-align:right}
+.adm .blist .brr .chip{margin-left:auto;flex:none}
+.adm .blist .brr .x{margin-left:4px;padding:4px 6px;border-radius:6px}
+.adm .blist .brr .x:hover{background:var(--fill)}
