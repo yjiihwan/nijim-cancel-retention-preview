@@ -173,7 +173,7 @@ const SX = `<div class="sx">${LOCK}시크릿 제안</div>`;
 const josa = (w) => { const c = w.replace(/\)+$/, '').slice(-1); return c >= '가' && c <= '힣' && (c.charCodeAt(0) - 0xAC00) % 28 ? '이' : '가'; };
 const secretP = (d, lead) => `${lead ? lead + ' ' : ''}${esc(d.center)}${josa(d.center)} ${esc(d.uname)}님을 위해 따로 준비했어요. 이 화면을 닫으면 다시 받을 수 없어요.`;
 const visitLead = (d) => d.visits ? `이번 달 ${d.visits}번이나 운동하셨잖아요.` : '그동안 함께해 주셔서 고마워요.';
-const OFFER_BTN = { price: '시크릿 혜택 받기', skip_off: '시크릿 혜택 받기', skip: '쉬어가기 찬스 받기', move: '지점 보러 갈게요', pt: '체험권 받을게요', inbody: '측정권 받을게요', keep: '계속 이용할게요' };
+const OFFER_BTN = { price: '시크릿 혜택 받기', skip_off: '시크릿 혜택 받기', skip: '쉬어가기 찬스 받기', pt: '체험권 받을게요', inbody: '측정권 받을게요', keep: '계속 이용할게요' };
 function A2(d, kind, reason, cfg, etcText) {
   let eb = `<div class="eyebrow">고른 이유 · <b>${reason !== 'etc' ? RL[reason] : '기타'}</b></div>`;
   if (reason === 'etc' && etcText) eb += `<div class="quote">${esc(etcText)}</div>`;
@@ -192,10 +192,6 @@ function A2(d, kind, reason, cfg, etcText) {
     box = `<div class="box sec"><div class="kv"><span class="k">${d.next_md} 결제</span><span class="v"><span class="big">건너뛰기</span></span></div>`
       + `<div class="kv"><span class="k">다시 결제</span><span class="v">${d.resume} · 월 ${won(d.price)}</span></div>`
       + `<div class="note">쉬는 기간(${d.next_md}~${d.skip_end})엔 센터에 입장할 수 없어요.</div></div>`;
-  } else if (kind === 'move') {
-    head = '이사 가는 곳 가까이<br><em>다른 지점</em>이 있어요';
-    sub = `${esc(d.center)}에서 안내하는 지점이에요. 옮겨서 이용하는 방법은 지점에서 안내해 드려요.`;
-    box = '<div class="box">' + cfg.branches.map(([n, a]) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div></div>`).join('') + '</div>';
   } else if (kind === 'pt' || kind === 'inbody') {
     const nm = kind === 'pt' ? 'PT 1회 체험권' : '인바디 측정권';
     head = kind === 'pt' ? '<em>PT 1회 체험</em>을<br>무료로 드릴게요' : '<em>인바디 측정</em>을<br>무료로 해 드릴게요';
@@ -226,21 +222,25 @@ function A3(d, kind, cfg) {
     `<div class="info" style="margin-top:14px">${d.use_end_md}까지는 지금처럼 이용하고, 푹 쉬고 ${d.resume}부터 다시 만나요.</div>`);
   if (kind === 'pt' || kind === 'inbody') return ok(`${kind === 'pt' ? 'PT 1회 체험권' : '인바디 측정권'}을<br>쿠폰함에 넣었어요`,
     `<div class="box">${kv('받은 것', `<span class="big">${kind === 'pt' ? 'PT 1회 체험권' : '인바디 측정권'}</span> · 0원`)}${kv('사용 기한', '받은 날부터 30일')}</div>`);
-  if (kind === 'move') return ok('가까운 지점을<br>확인해 보세요',
-    '<div class="box">' + cfg.branches.map(([n, a]) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div></div>`).join('') + '</div>');
   return ok('지금 가격 그대로<br>이용해요', `<div class="box">${kv('다음 결제', `${d.next_md} · 월 ${won(d.price)}`)}</div>`);
 }
 
 // ───────── A4 해지예약 완료 ─────────
-const A4 = (d) => SB + hdr('', false) + scr(91, '<div class="done">'
+// brs: 이유 «이사»이고 센터가 지점을 골라 뒀을 때만(1~3곳). 해지를 붙잡지 않는 정보 안내 — 어떤 버튼도 해지예약을 바꾸지 않는다(README_SPEC 18번).
+const brInfo = (d, brs) => `<div class="mv"><div class="lt">이사 가는 곳 가까이 이런 지점이 있어요</div><div class="box">`
+  + brs.map(([n, a], i) => `<div class="br"><span class="pin">${ic('mappin', '#FE2167', 16)}</span><div style="min-width:0;flex:1"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div><span class="see" data-act="viewBranch" data-i="${i}">지점 보기</span></div>`).join('')
+  + `</div><div class="ms">${esc(d.center)}에서 안내하는 지점이에요. 새로 이용하는 방법은 지점에서 안내해 드려요.</div></div>`;
+const A4 = (d, brs = []) => SB + hdr('', false) + scr(91, '<div class="done">'
   + `<div class="ok">${ic('cal', '#202024', 26)}</div>`
-  + `<div class="h1">해지 예약됐어요</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>`
+  + (brs.length ? `<div class="h1">해지 예약이 완료됐어요</div><div class="what">${d.use_end_md}까지는 지금처럼 이용할 수 있어요.<br>${esc(d.center)} · ${esc(d.product)}</div>`
+    : `<div class="h1">해지 예약됐어요</div><div class="what">${esc(d.center)} · ${esc(d.product)}</div>`)
   + `<div class="box"><div class="kv"><span class="k">이용</span><span class="v">${d.use_end_md}까지 지금처럼</span></div>`
   + `<div class="kv"><span class="k">해지예정일</span><span class="v">${d.next_dot}</span></div>`
   + '<div class="kv"><span class="k">다음 결제</span><span class="v">없음</span></div>'
   + `<div class="kv"><span class="k">알림</span><span class="v">${d.alarm_md} 카카오 알림톡</span></div></div>`
-  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.use_end_md}까지 언제든</b> 내 멤버십의 <b>[구독해지 철회]</b>로 되돌릴 수 있어요. 철회하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, 158)
-  + '<div class="stack"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">구독해지 철회</div></div>';
+  + (brs.length ? brInfo(d, brs) : '')
+  + `<div class="info" style="margin-top:14px">마음이 바뀌면 <b>${d.use_end_md}까지 언제든</b> 내 멤버십의 <b>[구독해지 철회]</b>로 되돌릴 수 있어요. 철회하면 <b>월 ${won(d.price)}</b> 그대로 이어져요.</div><div class="end"></div></div>`, brs.length ? 176 : 158)
+  + `<div class="stack${brs.length ? ' solid' : ''}"><div class="btn pri" data-act="toMembership">확인</div><div class="btn line" data-act="withdraw">구독해지 철회</div></div>`;
 
 // ───────── K1 알림톡(해지예정 3일 전) ─────────
 const KAKAO_CSS = `<style>
@@ -301,7 +301,8 @@ function resolveOffer(reason, cfg, sub, seen) {
     if (cfg.price_on && money) return 'skip_off';
     return keep;
   }
-  if (reason === 'move') return cfg.move_on && cfg.branches.length ? 'move' : keep;
+  // 이사는 붙잡는 이유가 아니다: 제안 화면 없이 해지예약 → 완료 화면에 지점 안내만(README_SPEC 18번)
+  if (reason === 'move') return null;
   if (reason === 'effect') return cfg.eff_on && !(sub && sub.couponIssued) ? cfg.eff_kind : keep;
   return keep;
 }
@@ -361,14 +362,15 @@ function centerCards(d, cfg, e) {
     b2 = `<div class="fall">꺼져 있으면 이 이유를 고른 회원에게 ${tgt}.</div>`;
   }
   const c2 = adminCard(2, 'skip_on', '바빠서 갈 시간이 없어요 · 다쳐서 쉬어야 해요 · 여행·출장을 가요', '한 달 쉬어가기 (결제 1회 건너뛰기)', cfg.skip_on, b2);
-  let b3 = FALL;
+  let b3;
   if (cfg.move_on) {
     const brs = cfg.branches.map(([n, a], i) => `<div class="brr"><div style="min-width:0"><div class="n">${esc(n)}</div><div class="a">${esc(a)}</div></div><span class="x" data-act="brDel" data-i="${i}">빼기</span></div>`).join('');
     b3 = `<div class="f"><div class="lb">안내할 지점 <span class="chip req">필수</span><span style="font-weight:500;color:var(--text3);font-size:12px">1~3곳 · ${cfg.branches.length}/3</span></div>`
       + `<div class="brs">${brs}<div class="add${e.br ? ' bad' : ''}" data-act="brAdd">+ 지점 추가 (니짐내짐 센터 검색)</div></div>`
-      + (e.br ? `<div class="errt">${ERR}${e.br}</div>` : '<div class="hint">회원 화면엔 지점 이름·주소만 보여요. 지점을 옮겨 이용하는 방법은 각 지점이 안내해요.</div>') + '</div>';
-  }
-  const c3 = adminCard(3, 'move_on', '이사를 가요', '가까운 다른 지점 안내', cfg.move_on, b3);
+      + (e.br ? `<div class="errt">${ERR}${e.br}</div>` : '<div class="hint">회원 화면엔 지점 이름·주소만 보여요. 지점을 옮겨 이용하는 방법은 각 지점이 안내해요.</div>') + '</div>'
+      + '<div class="fall" style="margin-top:10px">이사를 고른 회원은 붙잡지 않고 <b>바로 해지 예약</b>돼요. 해지 예약 완료 화면에 위 지점을 안내만 해요.</div>';
+  } else b3 = '<div class="fall">꺼져 있어요. 이사를 고른 회원은 지점 안내 없이 <b>바로 해지 예약</b>돼요.</div>';
+  const c3 = adminCard(3, 'move_on', '이사를 가요', '해지 진행 + 가까운 지점 안내', cfg.move_on, b3);
   let b4 = FALL;
   if (cfg.eff_on) {
     const k = cfg.eff_kind;
@@ -453,7 +455,7 @@ function previewHTML(d, cfg, pvI) {
   const onN = ['price_on', 'skip_on', 'move_on', 'eff_on', 'keep_on'].filter((k) => cfg[k]).length;
   const reason = pvI < 0 || onN === 0 ? 'busy' : PV_REASON[pvI];
   const kind = resolveOffer(reason, cfg, null, null);
-  const inner = kind ? A2(d, kind, reason, cfg, reason === 'etc' ? d.etc_text : '') : A1(d, reason, '', true);
+  const inner = kind ? A2(d, kind, reason, cfg, reason === 'etc' ? d.etc_text : '') : reason === 'move' && cfg.move_on ? A4(d, cfg.branches) : A1(d, reason, '', true);
   return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">'
     + '<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="proto.css"></head><body class="pvbody"><div class="phone">' + inner + '</div></body></html>';
 }

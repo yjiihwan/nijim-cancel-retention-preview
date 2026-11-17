@@ -175,3 +175,11 @@ body{font-family:"Pretendard","Apple SD Gothic Neo",sans-serif;color:var(--ink);
 .box.sec{position:relative;overflow:hidden;padding-left:21px}
 .box.sec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#202024}
 .done .sx{margin-top:12px}
+/* v1.4 이사 → 해지예약 완료 화면 지점 안내(정보만) */
+.done .mv{margin-top:22px}
+.done .mv .lt{font-size:15px;font-weight:700;line-height:21px;margin:0 0 10px}
+.done .mv .br{align-items:center}
+.done .mv .see{flex:none;font-size:13px;font-weight:600;color:var(--text2);border:1px solid #DCDDE1;border-radius:8px;padding:6px 10px;background:#fff;white-space:nowrap;cursor:pointer}
+.done .mv .ms{font-size:13px;color:var(--text2);line-height:19px;margin-top:8px}
+/* 지점 안내로 본문이 길어지면 아래 버튼 뒤로 글이 비치지 않게 흰 바탕 바(버튼 위치는 기존 .stack 그대로) */
+.stack.solid{left:0;right:0;bottom:0;padding:12px 20px 34px;background:#fff;border-top:1px solid var(--line);z-index:4}

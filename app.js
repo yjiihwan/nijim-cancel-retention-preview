@@ -40,8 +40,10 @@ const newSub = () => ({ status: 'active', discountPending: 0, skipPending: false
 const newMember = () => ({ seen: {} });
 const useSub = (pid) => { S.cur = pid; S.sub = S.subs[pid]; };
 function reset() { S.subs = { p_health: newSub(), p_pt: newSub() }; useSub(S.subsN === 2 ? S.cur : 'p_health'); S.member = newMember(); S.attempts = []; S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
-const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', move: 'branch', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
+const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
 const cur = () => S.attempts[S.attempts.length - 1];
+// 이사 사유 해지예약 완료 화면에 보여 줄 지점(센터 설정이 켜져 있고 1곳 이상일 때만)
+const moveBrs = () => { const a = cur(), c = curCfg(); return a && a.reason === 'move' && c.move_on ? c.branches : []; };
 
 // ───────── 렌더 ─────────
 function render() {
@@ -54,7 +56,7 @@ function render() {
     case 'A1': h = A1(d, S.reason, S.etc, S.reason && !resolveOffer(S.reason, c, S.sub, seenNow())); break;
     case 'A2': h = A2(d, S.kind, S.reason, c, S.etc.trim()); break;
     case 'A3': h = A3(d, S.kind, c); break;
-    case 'A4': h = A4(d); break;
+    case 'A4': h = A4(d, moveBrs()); break;
     case 'A5': h = A5(d, LONG, pk); break;
     case 'A6': h = A6(d, pk); break;
     case 'K1': h = K1(d); break;
@@ -120,7 +122,7 @@ function stateText() {
   if (a) lines.push('— 마지막 cancel_request —',
     `reason_code   = ${a.reason}${a.reason_text ? ` («${a.reason_text.slice(0, 20)}${a.reason_text.length > 20 ? '…' : ''}»)` : ''}`,
     `offer_type    = ${a.offer_type || (a.offer_skipped ? `null (${a.offer_skipped})` : 'null')}`, `offer_accepted= ${a.offer_accepted}`, `result        = ${a.result || '(진행 중)'}`,
-    `withdrawn_via = ${a.withdrawn_via || 'null'}`);
+    `withdrawn_via = ${a.withdrawn_via || 'null'}`, ...(a.info_branches ? [`info_branches = ${a.info_branches.join(', ')} (정보 안내만)`] : []));
   return lines.join('\n');
 }
 function renderPanel() {
@@ -154,8 +156,9 @@ const ACT = {
   reserve() {
     const skipped = S.screen === 'A1' && seenNow();
     if (S.screen === 'A1') S.attempts.push({ product_id: S.cur, reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: null, offer_skipped: skipped ? 'already_seen' : null, offer_accepted: false, result: null, withdrawn_via: null });
+    const brs = moveBrs(); if (brs.length) cur().info_branches = brs.map((b) => b[0]);
     if (S.sub.status !== 'reserved') { S.sub.status = 'reserved'; cur().result = 'reserved'; }
-    S.log = (skipped ? '이 상품에서 이미 제안을 본 회원 → 제안 없이 바로 해지예약. ' : '') + '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.'; go('A4');
+    S.log = (skipped ? '이 상품에서 이미 제안을 본 회원 → 제안 없이 바로 해지예약. ' : '') + '해지예약 저장. 다음 결제일(11/15)에 결제하지 않고 종료돼요.' + (brs.length ? ` 이사 → 완료 화면에 지점 ${brs.length}곳 안내(정보만).` : ''); go('A4');
   },
   accept() {
     const k = S.kind, a = cur();
@@ -163,7 +166,7 @@ const ACT = {
     if (k === 'skip') S.sub.skipPending = true;
     if (k === 'pt' || k === 'inbody') S.sub.couponIssued = k === 'pt' ? 'PT 1회 체험권(30일)' : '인바디 측정권(30일)';
     a.offer_accepted = true; a.result = 'kept';
-    S.log = { price: '다음 결제 1회 할인 예약', skip_off: '다음 결제 1회 할인 예약', skip: '다음 결제 1회 건너뛰기 예약', move: '지점 안내로 이동(구독 그대로)', pt: '쿠폰함에 체험권 발급', inbody: '쿠폰함에 측정권 발급', keep: '구독 그대로' }[k];
+    S.log = { price: '다음 결제 1회 할인 예약', skip_off: '다음 결제 1회 할인 예약', skip: '다음 결제 1회 건너뛰기 예약', pt: '쿠폰함에 체험권 발급', inbody: '쿠폰함에 측정권 발급', keep: '구독 그대로' }[k];
     go('A3');
   },
   switchSub() { if (S.subsN !== 2) return; useSub(OTHER[S.cur]); S.scrollTop = 0; S.log = `보는 구독 → ${D().product}`; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
@@ -176,6 +179,7 @@ const ACT = {
   },
   otherCancel(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지] → 지금 앱 동작 그대로(회유 흐름 없음, 이 프로토타입엔 그 화면이 없어요).`; render(); },
   otherWithdraw(el) { S.log = `기타 서비스(${D().others[el.dataset.i].name}) [구독해지 철회] → 지금 앱 동작 그대로.`; render(); },
+  viewBranch(el) { S.log = `[지점 보기] ${moveBrs()[el.dataset.i][0]} 센터 상세로 이동(해지 예약은 그대로, 상태 변화 없음).`; render(); },
   hideToast() { S.toast = false; $('.toast')?.classList.add('gone'); },
   kakaoWithdraw() { S.k2 = { reserved: 'ask', ended: 'ended' }[S.sub.status] || 'done'; S.log = S.k2 === 'ended' ? '해지예정일이 지난 뒤 연 링크 → «이미 종료된 구독이에요» 안내만(구매·결제 화면으로 보내지 않음).' : '알림톡 [구독해지 철회하기] → 앱 로그인 확인 → 철회 페이지(결제 기능 없음). 링크를 연 것만으로는 철회 안 됨.'; go('K2'); },
   kakaoConfirm() {
@@ -276,6 +280,7 @@ const GO = {
   'A2-2': () => { PANEL.preset('all'); PANEL.reason('busy'); },
   'A2-2b': () => PANEL.reason('busy'),
   'A2-3': () => { PANEL.preset('all'); PANEL.reason('move'); },
+  A4m: () => { PANEL.preset('all'); PANEL.reason('move'); ACT.reserve(); },
   'A2-4': () => PANEL.reason('effect'),
   'A2-4b': () => { PANEL.preset('inbody'); PANEL.reason('effect'); },
   'A2-5': () => PANEL.reason('etc'),
