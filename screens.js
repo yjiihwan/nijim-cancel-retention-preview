@@ -3,7 +3,7 @@
 // v1.2(10-23): K1 알림톡 = 카카오 정보성 검수 수정본(금액·정가·재가입 문장 삭제), 알림톡 [구독해지 철회하기] → K2 철회 페이지(결제 기능 없음).
 // v1.1(10-23): 시안 v2 = 형 실제 앱 «내 멤버십» 화면 기준 A0·A5·A6 재작성(rm* 함수). 진입=기존 [구독해지], 철회=기존 초록 [구독해지 철회].
 // 시안에 없는 «제안 적용 완료» 변형(쉬어가기·쿠폰·지점·유지)은 A3 틀을 그대로 쓰고 문구만 바꿨다 → README_SPEC 9번.
-// v1.5(11-17): «이사» = 해지 예약 저장 → 이사 갈 주소 검색(카카오 우편번호) → 등록 지점 중 직선거리 가까운 순 5곳. 관리자 추천 지점 최대 100곳·주소→위치 저장(README_SPEC 19번).
+// v1.5(11-17): «이사» = 해지 예약 저장 → 이사 갈 주소 검색(카카오 우편번호) → 등록 지점 중 직선거리 가까운 순 5곳. 관리자 추천 지점 최대 100곳·주소→위치 저장(README_SPEC 18번).
 'use strict';
 const won = (n) => `${n.toLocaleString('ko-KR')}원`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -227,7 +227,7 @@ function A3(d, kind, cfg) {
 }
 
 // ───────── A4 해지예약 완료 ─────────
-// v1.5(11-17): 이사 = 해지 예약 저장 → A4s «이사 갈 곳 주소 검색» → A4 가까운 순 5곳. 주소 검색은 해지 예약이 저장된 뒤라 건너뛰거나 앱을 꺼도 해지는 그대로(README_SPEC 19번).
+// v1.5(11-17): 이사 = 해지 예약 저장 → A4s «이사 갈 곳 주소 검색» → A4 가까운 순 5곳. 주소 검색은 해지 예약이 저장된 뒤라 건너뛰거나 앱을 꺼도 해지는 그대로(README_SPEC 18번).
 // 거리 = 두 좌표의 직선거리(하버사인). 좌표 없는 지점(주소 변환 실패)은 추천에서 뺀다.
 const distKm = (p, q) => {
   const R = 6371, rad = (x) => x * Math.PI / 180, dLat = rad(q[0] - p[0]), dLng = rad(q[1] - p[1]);
@@ -236,7 +236,7 @@ const distKm = (p, q) => {
 };
 const fmtKm = (k) => k < 1 ? `${Math.max(10, Math.round(k * 100) * 10)}m` : k < 10 ? `${k.toFixed(1)}km` : `${Math.round(k).toLocaleString('ko-KR')}km`;
 const hasPt = (b) => typeof b[2] === 'number' && typeof b[3] === 'number';
-// 추천 거리 상한(직선거리 km)·추천 개수 — 운영에서 바꿀 값은 이 두 줄만 고치면 된다(README_SPEC 19-1).
+// 추천 거리 상한(직선거리 km)·추천 개수 — 운영에서 바꿀 값은 이 두 줄만 고치면 된다(README_SPEC 18-3).
 const MOVE_MAX_KM = 50, MOVE_TOP_N = 5;
 // 상한 밖 지점은 5곳이 안 차도 채우지 않는다. 0곳이면 화면에 지점 칸 없이 해지 완료 안내만.
 const nearest = (brs, pt, n = MOVE_TOP_N, maxKm = MOVE_MAX_KM) => brs.filter(hasPt).map((b) => ({ n: b[0], a: b[1], km: distKm(pt, [b[2], b[3]]) })).filter((b) => b.km <= maxKm).sort((x, y) => x.km - y.km).slice(0, n);
