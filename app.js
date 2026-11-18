@@ -11,7 +11,7 @@ const PRESETS = {
 };
 const S = {
   mode: 'app', data: 'base', visits0: false, feature: true,
-  preset: 'b1', cfg: null, draft: null, ui: { pvI: 0, savedAt: SAVED0, tab: 'center', open: null, pvP: 'p_pt', brq: '', brf: '', brBad: false, editI: null, editV: null },
+  preset: 'b1', cfg: null, draft: null, ui: { page: 'settings', pvI: 0, savedAt: SAVED0, tab: 'center', open: null, pvP: 'p_pt', brq: '', brf: '', brBad: false, editI: null, editV: null },
   screen: 'A0', reason: null, etc: '', kind: null, scrollTop: 0, toast: true,
   sub: null, subs: null, member: null, attempts: [], log: '',
   subsN: 1, cur: 'p_health', // 구독 상품 1개(헬스) / 2개(헬스 + PT 패키지), 지금 보는 상품
@@ -50,7 +50,7 @@ const newSub = () => ({ status: 'active', discountPending: 0, skipPending: false
 const newMember = () => ({ seen: {} });
 const newMove = () => ({ place: '', near: [], busy: false, result: null });
 const useSub = (pid) => { S.cur = pid; S.sub = S.subs[pid]; };
-function reset() { S.subs = { p_health: newSub(), p_pt: newSub() }; useSub(S.subsN === 2 ? S.cur : 'p_health'); S.member = newMember(); S.attempts = []; S.move = newMove(); S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
+function reset() { rpReset(); S.subs = { p_health: newSub(), p_pt: newSub() }; useSub(S.subsN === 2 ? S.cur : 'p_health'); S.member = newMember(); S.attempts = []; S.move = newMove(); S.screen = 'A0'; S.scrollTop = 0; S.reason = null; S.etc = ''; S.kind = null; S.log = ''; }
 const OFFER_TYPE = { price: 'discount', skip_off: 'discount', skip: 'skip_payment', pt: 'pt_coupon', inbody: 'inbody_coupon', keep: 'keep_notice' };
 const cur = () => S.attempts[S.attempts.length - 1];
 // 이사 사유: 주소 검색으로 찾은 가까운 지점(S.move.near). 센터 설정이 켜져 있고 위치가 저장된 지점이 1곳 이상일 때만 검색 단계를 보여 준다.
@@ -86,6 +86,7 @@ const geocodeMove = (dt) => { const sf = SIDO_FULL[dt.sido] || dt.sido; return g
 function render() {
   document.body.classList.toggle('mode-app', S.mode === 'app');
   document.body.classList.toggle('mode-admin', S.mode === 'admin');
+  document.body.classList.toggle('page-report', S.mode === 'admin' && S.ui.page === 'report');
   const d = D(), c = curCfg(), pk = peekD();
   let h;
   switch (S.screen) {
@@ -114,6 +115,8 @@ function render() {
 function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(20, t.scrollHeight) + 'px'; }
 function renderAdmin() {
   const adm = $('#adm'), d = DB();
+  adm.classList.toggle('rp', S.ui.page === 'report');
+  if (S.ui.page === 'report') { adm.innerHTML = reportScreen(); bindReport(); return; }
   const ae = document.activeElement, fid = ae && ae.tagName === 'INPUT' && adm.contains(ae) ? ae.id : null, fpos = fid ? ae.selectionStart : null;
   const bl = $('#blist'), blTop = bl ? bl.scrollTop : 0;
   adm.innerHTML = adminScreen(d, S.draft, S.ui);
@@ -172,7 +175,7 @@ function stateText() {
 }
 function renderPanel() {
   const set = (sel, v) => document.querySelectorAll(`${sel} button`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  set('#p-mode', S.mode); set('#p-data', S.data); set('#p-seen', seenNow() ? '1' : '0'); set('#p-subs', S.subsN); set('#p-cur', S.subsN === 2 ? S.cur : ''); set('#p-vis', S.visits0 ? '0' : '12'); set('#p-feat', S.feature ? '1' : '0');
+  set('#p-mode', S.mode === 'admin' && S.ui.page === 'report' ? 'report' : S.mode); set('#p-login', RPS.login); set('#p-data', S.data); set('#p-seen', seenNow() ? '1' : '0'); set('#p-subs', S.subsN); set('#p-cur', S.subsN === 2 ? S.cur : ''); set('#p-vis', S.visits0 ? '0' : '12'); set('#p-feat', S.feature ? '1' : '0');
   set('#p-preset', S.preset); set('#p-nbr', S.cfg.branches.length);
   set('#p-reason', S.screen === 'A2' || S.screen === 'A1' ? S.reason : '');
   $('#p-state').textContent = stateText();
@@ -196,12 +199,13 @@ const ACT = {
     S.attempts.push({ product_id: S.cur, reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: OFFER_TYPE[S.kind], offer_accepted: false, result: null, withdrawn_via: null });
     // 화면을 띄우는 순간 기록(수락 여부·뒤로가기와 무관) — «이 화면을 닫으면 다시 받을 수 없어요»
     if (!seenNow()) S.member.seen[S.cur] = { at: '2026-10-23T14:30:00+09:00', type: OFFER_TYPE[S.kind] };
+    rpOnOffer(cur(), D(), S.kind, curCfg());
     go('A2');
   },
   reserve() {
     const skipped = S.screen === 'A1' && seenNow();
     if (S.screen === 'A1') S.attempts.push({ product_id: S.cur, reason: S.reason, reason_text: S.reason === 'etc' ? S.etc.trim() : '', offer_type: null, offer_skipped: skipped ? 'already_seen' : null, offer_accepted: false, result: null, withdrawn_via: null });
-    if (S.sub.status !== 'reserved') { S.sub.status = 'reserved'; cur().result = 'reserved'; }
+    if (S.sub.status !== 'reserved') { S.sub.status = 'reserved'; cur().result = 'reserved'; rpOnReserve(cur()); }
     S.move = newMove();
     // 해지 예약을 먼저 저장하고 나서 주소 검색 → 회원이 건너뛰거나 앱을 꺼도 해지는 이미 끝난 상태
     const step = isMove() && moveOK();
@@ -215,7 +219,7 @@ const ACT = {
     if (k === 'price' || k === 'skip_off') S.sub.discountPending = curCfg().disc;
     if (k === 'skip') S.sub.skipPending = true;
     if (k === 'pt' || k === 'inbody') S.sub.couponIssued = k === 'pt' ? 'PT 1회 체험권(30일)' : '인바디 측정권(30일)';
-    a.offer_accepted = true; a.result = 'kept';
+    a.offer_accepted = true; a.result = 'kept'; rpOnAccept(a);
     S.log = { price: '다음 결제 1회 할인 예약', skip_off: '다음 결제 1회 할인 예약', skip: '다음 결제 1회 건너뛰기 예약', pt: '쿠폰함에 체험권 발급', inbody: '쿠폰함에 측정권 발급', keep: '구독 그대로' }[k];
     go('A3');
   },
@@ -223,7 +227,7 @@ const ACT = {
   toMembership() { S.scrollTop = 'svc'; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
   withdraw(via = 'app') {
     if (S.sub.status !== 'reserved') { S.log = '이미 철회됐어요 — 변화 없음(두 번 눌러도 안전).'; S.scrollTop = 'svc'; return go('A0'); }
-    S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = via; }
+    S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = via; } rpOnWithdraw(a);
     S.toast = true; S.log = via === 'alimtalk' ? '알림톡 링크 → 앱 로그인 확인 후 철회(링크를 연 것만으로는 철회 안 됨).' : '해지예약 철회. 다음 결제 그대로.';
     go('A6'); setTimeout(() => { if (S.screen === 'A6' && !qs.get('shot')) { S.toast = false; $('.toast')?.classList.add('gone'); } }, 3500);
   },
@@ -260,7 +264,7 @@ const ACT = {
   kakaoWithdraw() { S.k2 = { reserved: 'ask', ended: 'ended' }[S.sub.status] || 'done'; S.log = S.k2 === 'ended' ? '해지예정일이 지난 뒤 연 링크 → «이미 종료된 구독이에요» 안내만(구매·결제 화면으로 보내지 않음).' : '알림톡 [구독해지 철회하기] → 앱 로그인 확인 → 철회 페이지(결제 기능 없음). 링크를 연 것만으로는 철회 안 됨.'; go('K2'); },
   kakaoConfirm() {
     if (S.sub.status !== 'reserved') { S.k2 = S.sub.status === 'ended' ? 'ended' : 'done'; S.log = '이미 철회됐어요 — 변화 없음(두 번 눌러도 안전).'; return render(); }
-    S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = 'alimtalk'; }
+    S.sub.status = 'active'; const a = cur(); if (a) { a.result = 'withdrawn'; a.withdrawn_via = 'alimtalk'; } rpOnWithdraw(a);
     S.k2 = 'done'; S.log = '알림톡 철회 페이지에서 철회. 다음 결제 그대로(이 페이지엔 결제·금액 표시 없음).'; render();
   },
   kakaoView() { S.scrollTop = 'svc'; go(S.sub.status === 'reserved' ? 'A5' : 'A0'); },
@@ -319,7 +323,7 @@ const ADM = {
 
 // ───────── 조작판 ─────────
 const PANEL = {
-  mode(v) { S.mode = v; render(); },
+  mode(v) { if (v === 'report') { S.mode = 'admin'; S.ui.page = 'report'; } else { S.mode = v; if (v === 'admin') S.ui.page = 'settings'; } render(); },
   data(v) { S.data = v; S.cfg = mkCfg(S.preset || 'b1'); S.draft = clone(S.cfg); render(); },
   vis(v) { S.visits0 = v === '0'; render(); },
   seen(v) {
@@ -345,6 +349,7 @@ const PANEL = {
       S.log = '11월 12일 10:00 — 종료 3일 전 알림톡 발송'; S.mode = 'app'; return go('K1');
     }
     if (v === 'pay') {
+      if (s.status !== 'ended') rpOnPay(s, S.cur, cur());
       if (s.status === 'reserved') { s.status = 'ended'; S.log = `${d.next_md} — 결제하지 않고 구독 종료(현행 만료 처리, 이번 범위 밖)`; S.scrollTop = 0; S.screen = 'A0'; return render(); }
       if (s.status === 'ended') { S.log = '이미 종료된 구독이에요.'; return render(); }
       if (s.skipPending) { s.skipPending = false; S.log = `${d.next_md} — 결제 건너뜀(쉬는 기간 입장 불가) → ${d.resume}에 ${won(d.price)} 결제 재개`; }
@@ -355,6 +360,7 @@ const PANEL = {
   },
 };
 
+Object.assign(ADM, RP_ADM); Object.assign(PANEL, RP_PANEL);
 document.addEventListener('click', (e) => {
   const pb = e.target.closest('.demo button');
   if (pb) { const g = pb.parentElement.dataset.g; PANEL[g](pb.dataset.v); return; }
@@ -399,6 +405,9 @@ const GO = {
   A3p: () => { PANEL.cur('p_pt'); PANEL.reason('price'); ACT.accept(); },
   A0two: () => { PANEL.subs('2'); },
   C1: () => { S.mode = 'admin'; },
+  // v1.6 회유 성과: R1 영등포점(이번 달=10월) · R1b 강남역점 · R1z 성수점(0건) · R1h 본사 · R1l 지난 달 · R1c 직접 지정(6월=0건)
+  R1: () => { RP_PANEL.login('c_ydp'); }, R1b: () => { RP_PANEL.login('c_gn'); }, R1z: () => { RP_PANEL.login('c_ss'); }, R1h: () => { RP_PANEL.login('hq'); },
+  R1l: () => { RP_PANEL.login('c_ydp'); RPS.period = 'last'; }, R1c: () => { RP_PANEL.login('c_ydp'); RPS.period = 'custom'; RPS.from = '2026-06-01'; RPS.to = '2026-06-30'; },
   C2: () => { S.mode = 'admin'; S.ui.tab = 'prod'; S.ui.open = 'p_pt'; S.ui.pvP = 'p_pt'; },
   C3: () => { S.mode = 'admin'; S.ui.tab = 'prod'; S.ui.open = 'p_pil'; S.ui.pvP = 'p_pil'; S.ui.pvI = 1; },
   C4: () => { S.mode = 'admin'; S.ui.tab = 'prod'; S.draft.own.p_stu = { price_on: true, disc: 50000, discRaw: '50,000', skip_on: false }; S.ui.open = 'p_stu'; S.ui.pvP = 'p_stu'; },
@@ -418,7 +427,7 @@ if (g && GO[g]) GO[g]();
 if (qs.get('disc')) for (const c of [S.cfg, S.draft]) { c.disc = Number(qs.get('disc')); c.discRaw = c.disc.toLocaleString('ko-KR'); }
 if (qs.get('nbr')) setNbr(Number(qs.get('nbr')));
 render();
-window.__proto = { S, ACT, PANEL, ADM, resolveOffer, render, curCfg, seenNow, D, DB, setNbr, nearest, distKm };
+window.__proto = { S, ACT, PANEL, ADM, RPS, reportApi, rpCsvText, rpSum, RP_SEED, RP_CENTERS, resolveOffer, render, curCfg, seenNow, D, DB, setNbr, nearest, distKm };
 // 카카오 우편번호 서비스(키 필요 없음) — 이사 주소 검색 창을 처음 열 때만 불러온다
 let pcP = null;
 function loadPostcode() {

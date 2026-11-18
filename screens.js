@@ -335,10 +335,11 @@ function resolveOffer(reason, cfg, sub, seen) {
 
 // ───────── 관리자 «해지 회유 설정» (admin.py screen() 그대로) ─────────
 const ERR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E5342B" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.2"/></svg>';
-function side() {
-  const navs = [['g', '운영'], ['n', '홈'], ['n', '회원 관리'], ['n', '출석'], ['g', '상품'], ['n', '멤버십 상품'], ['n', '구독 멤버십'], ['s', '구독 회원'], ['son', '해지 회유 설정'], ['g', '매출'], ['n', '결제·정산'], ['g', '설정'], ['n', '센터 정보'], ['n', '온라인광고']];
-  return `<div class="side"><div class="brand">${SYM}니짐내짐 센터 관리</div>` + navs.map(([k, l]) => k === 'g' ? `<div class="grp">${l}</div>`
-    : `<div class="nav${k === 's' || k === 'son' ? ' sub' : ''}${k === 'son' ? ' on' : ''}">${l}</div>`).join('') + '</div>';
+// v1.6: 구독 멤버십 아래 «회유 성과» 추가(해지 회유 설정 바로 아래). 두 메뉴는 눌러서 오갈 수 있음
+function side(page = 'settings') {
+  const navs = [['g', '운영'], ['n', '홈'], ['n', '회원 관리'], ['n', '출석'], ['g', '상품'], ['n', '멤버십 상품'], ['n', '구독 멤버십'], ['s', '구독 회원'], ['s', '해지 회유 설정', 'settings'], ['s', '회유 성과', 'report'], ['g', '매출'], ['n', '결제·정산'], ['g', '설정'], ['n', '센터 정보'], ['n', '온라인광고']];
+  return `<div class="side"><div class="brand">${SYM}니짐내짐 센터 관리</div>` + navs.map(([k, l, v]) => k === 'g' ? `<div class="grp">${l}</div>`
+    : `<div class="nav${k === 's' ? ' sub' : ''}${v && v === page ? ' on' : ''}"${v ? ` data-act="nav" data-v="${v}"` : ''}>${l}</div>`).join('') + '</div>';
 }
 // 할인 금액 검사: 1,000원 이상 · 1,000원 단위 · 상한(센터 기본 = 기본을 따르는 상품 중 가장 낮은 월 결제금액, 상품별 = 그 상품 월 결제금액) 미만
 function discError(raw, maxExcl, own = false) {
